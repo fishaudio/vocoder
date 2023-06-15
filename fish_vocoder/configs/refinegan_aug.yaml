@@ -124,6 +124,6 @@ lr_scheduler:
   gamma: 0.999
 
 loop:
-  val_interval: 100
-  save_interval: 100
+  val_interval: 5000
+  save_interval: 5000
   max_steps: 1000000
