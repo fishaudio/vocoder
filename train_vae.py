@@ -196,7 +196,7 @@ def training_step(
         gt_spec = model.spectrogram_transform(gt_y.squeeze(1))
 
     spec_lengths = lengths // cfg.base.hop_length
-    z, mean, std, _ = model.posterior_encoder(gt_spec, spec_lengths)
+    z, mean, std, z_mask = model.posterior_encoder(gt_spec, spec_lengths)
     g_hat_y = model.generator(z)
 
     min_length = min(g_hat_y.shape[-1], gt_y.shape[-1])
@@ -255,7 +255,7 @@ def training_step(
     log_dict["train/loss_mrd"] = loss_mrd
 
     # KL Loss
-    loss_kl = kl_loss(mean, std)
+    loss_kl = kl_loss(mean, std, z_mask)
     log_dict["train/loss_kl"] = loss_kl
 
     # All generator Loss
@@ -284,7 +284,7 @@ def validation_step(
     # Forward VAE
     gt_spec = model.spectrogram_transform(gt_y.squeeze(1))
     spec_lengths = lengths // cfg.base.hop_length
-    z, mean, std, _ = model.posterior_encoder(gt_spec, spec_lengths)
+    z, mean, std, z_mask = model.posterior_encoder(gt_spec, spec_lengths)
     g_hat_y = model.generator(z)
 
     min_length = min(g_hat_y.shape[-1], gt_y.shape[-1])
@@ -305,7 +305,7 @@ def validation_step(
     log_dict["val/loss_mel"] = loss_mel
 
     # KL Loss
-    loss_kl = kl_loss(mean, std)
+    loss_kl = kl_loss(mean, std, z_mask)
     log_dict["val/loss_kl"] = loss_kl
 
     # Log Audio and Mel Spectrograms
@@ -401,8 +401,10 @@ def discriminator_loss(disc_real_outputs, disc_generated_outputs):
     return sum(losses) / len(losses)
 
 
-def kl_loss(mean, std):
-    return 0.5 * torch.sum(mean**2 + std**2 - torch.log(std**2) - 1, dim=1).mean()
+def kl_loss(mean, std, mask):
+    losses = 0.5 * (mean**2 + std**2 - torch.log(std**2) - 1)
+
+    return torch.sum(losses * mask) / torch.sum(mask)
 
 
 if __name__ == "__main__":
