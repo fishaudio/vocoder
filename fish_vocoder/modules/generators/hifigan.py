@@ -124,6 +124,7 @@ class HiFiGANGenerator(nn.Module):
         leaky_relu_slope: float = 0.2,
         num_mels: int = 128,
         upsample_initial_channel: int = 512,
+        use_template: bool = True,
     ):
         super().__init__()
 
@@ -140,7 +141,9 @@ class HiFiGANGenerator(nn.Module):
         self.num_kernels = len(resblock_kernel_sizes)
 
         self.noise_convs = nn.ModuleList()
+        self.use_template = use_template
         self.ups = nn.ModuleList()
+
         for i, (u, k) in enumerate(zip(upsample_rates, upsample_kernel_sizes)):
             c_cur = upsample_initial_channel // (2 ** (i + 1))
             self.ups.append(
@@ -154,6 +157,10 @@ class HiFiGANGenerator(nn.Module):
                     )
                 )
             )
+
+            if not use_template:
+                continue
+
             if i + 1 < len(upsample_rates):  #
                 stride_f0 = np.prod(upsample_rates[i + 1 :])
                 self.noise_convs.append(
@@ -171,22 +178,22 @@ class HiFiGANGenerator(nn.Module):
         self.resblocks = nn.ModuleList()
         for i in range(len(self.ups)):
             ch = upsample_initial_channel // (2 ** (i + 1))
-            for j, (k, d) in enumerate(
-                zip(resblock_kernel_sizes, resblock_dilation_sizes)
-            ):
+            for k, d in zip(resblock_kernel_sizes, resblock_dilation_sizes):
                 self.resblocks.append(ResBlock1(None, ch, k, d))
 
         self.conv_post = weight_norm(nn.Conv1d(ch, 1, 7, 1, padding=3))
         self.ups.apply(init_weights)
         self.conv_post.apply(init_weights)
 
-    def forward(self, x, template):
+    def forward(self, x, template=None):
         x = self.conv_pre(x)
+
         for i in range(self.num_upsamples):
             x = F.leaky_relu(x, self.leaky_relu_slope, inplace=True)
             x = self.ups[i](x)
-            x_source = self.noise_convs[i](template)
-            x = x + x_source
+
+            if self.use_template:
+                x = x + self.noise_convs[i](template)
 
             xs = None
             for j in range(self.num_kernels):
