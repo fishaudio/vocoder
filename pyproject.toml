@@ -16,7 +16,8 @@ dependencies = [
     "natsort<9.0.0,>=8.3.1",
     "torch<3.0.0,>=2.0.0",
     "torchaudio<3.0.0,>=2.0.0",
-    "pytorch-lightning<3.0.0,>=2.0.2",
+    "lightning>=2.0.3",
+    "torchmetrics>=0.11.4",
 ]
 
 [tool.pdm]
