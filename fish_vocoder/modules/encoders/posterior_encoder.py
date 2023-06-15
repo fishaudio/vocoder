@@ -91,14 +91,14 @@ class VAEBatchNorm1d(nn.Module):
     def __init__(self, num_features, eps=1e-5, tau=0.5):
         super().__init__()
 
+        self.bn = nn.BatchNorm1d(num_features, affine=False)
+    
         self.scale = nn.Parameter(torch.zeros(1, num_features, 1))
         self.eps = eps
         self.tau = tau
 
     def forward(self, x, positive=True):
-        # Baisc normalization
-        x = x - torch.mean(x, dim=2, keepdim=True)
-        x = x / (torch.std(x, dim=2, keepdim=True) + self.eps)
+        x = self.bn(x)
 
         if positive:
             scale = self.tau + (1 - self.tau) * torch.sigmoid(self.scale)

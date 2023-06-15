@@ -194,6 +194,7 @@ def training_step(
     # Forward VAE
     with torch.no_grad():
         gt_spec = model.spectrogram_transform(gt_y.squeeze(1))
+        gt_spec = gt_spec[..., : lengths.max() // cfg.base.hop_length]
 
     spec_lengths = lengths // cfg.base.hop_length
     z, mean, std, z_mask = model.posterior_encoder(gt_spec, spec_lengths)
@@ -283,6 +284,8 @@ def validation_step(
 
     # Forward VAE
     gt_spec = model.spectrogram_transform(gt_y.squeeze(1))
+    gt_spec = gt_spec[..., : lengths.max() // cfg.base.hop_length]
+
     spec_lengths = lengths // cfg.base.hop_length
     z, mean, std, z_mask = model.posterior_encoder(gt_spec, spec_lengths)
     g_hat_y = model.generator(z)
@@ -401,10 +404,23 @@ def discriminator_loss(disc_real_outputs, disc_generated_outputs):
     return sum(losses) / len(losses)
 
 
+@torch.autocast("cuda", enabled=False)
 def kl_loss(mean, std, mask):
     losses = 0.5 * (mean**2 + std**2 - torch.log(std**2) - 1)
 
-    return torch.sum(losses * mask) / torch.sum(mask)
+    if torch.isinf(torch.masked_select(losses, mask.to(bool)).mean()):
+        print(
+            mean.shape,
+            std.shape,
+            losses.shape,
+            torch.max(mean),
+            torch.max(std),
+            torch.max(mean**2),
+            torch.max(std**2),
+            torch.max(torch.log(std**2)),
+            torch.masked_select(losses, mask.to(bool)).mean()
+        )
+    return torch.masked_select(losses, mask.to(bool)).mean()
 
 
 if __name__ == "__main__":
