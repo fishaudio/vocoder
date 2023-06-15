@@ -32,7 +32,7 @@ data:
             sampling_rate: ${base.sampling_rate}
           - _target_: fish_vocoder.data.transforms.pad_crop.RandomPadCrop
             probability: 1
-            crop_length: "${eval: '${base.hop_length} * 40'}"
+            crop_length: "${eval: '${base.hop_length} * 50'}"
             padding: true
       augment_transform:
         _target_: fish_vocoder.data.transforms.discontinuous.RandomDiscontinuous
@@ -90,16 +90,27 @@ model:
           sample_rate: ${base.sampling_rate}
           n_mels: ${base.num_mels}
 
+    # generator:
+    #   _target_: fish_vocoder.modules.generators.refinegan.RefineGANGenerator
+    #   sampling_rate: ${base.sampling_rate}
+    #   hop_length: ${base.hop_length}
+    #   downsample_rates: [2, 2, 2, 8, 8]
+    #   upsample_rates: [8, 8, 2, 2, 2]
+    #   leaky_relu_slope: 0.2
+    #   num_mels: ${base.num_mels}
+    #   start_channels: 16
+    
     generator:
-      _target_: fish_vocoder.modules.generators.refinegan.RefineGANGenerator
-      sampling_rate: ${base.sampling_rate}
+      _target_: fish_vocoder.modules.generators.hifigan.HiFiGANGenerator
       hop_length: ${base.hop_length}
-      downsample_rates: [2, 2, 2, 8, 8]
       upsample_rates: [8, 8, 2, 2, 2]
+      upsample_kernel_sizes: [16, 16, 8, 2, 2]
+      resblock_kernel_sizes: [3, 7, 11]
+      resblock_dilation_sizes: [[1, 3, 5], [1, 3, 5], [1, 3, 5]]
       leaky_relu_slope: 0.2
       num_mels: ${base.num_mels}
-      start_channels: 16
-    
+      upsample_initial_channel: 512
+
     mpd:
       _target_: fish_vocoder.modules.discriminators.mpd.MultiPeriodDiscriminator
       periods: [3, 5, 7, 11, 17, 23, 37]

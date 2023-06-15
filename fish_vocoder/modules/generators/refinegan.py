@@ -249,15 +249,6 @@ class RefineGANGenerator(nn.Module):
             new_channels = channels // 2
 
             self.upsample_blocks.append(nn.Upsample(scale_factor=rate, mode="linear"))
-            # self.upsample_blocks.append(
-            #     nn.ConvTranspose1d(
-            #         in_channels=channels,
-            #         out_channels=channels,
-            #         kernel_size=rate * 2,
-            #         stride=rate,
-            #         padding=rate // 2,
-            #     )
-            # )
 
             self.upsample_conv_blocks.append(
                 ParallelResBlock(
@@ -280,15 +271,6 @@ class RefineGANGenerator(nn.Module):
                 padding=3,
             )
         )
-
-        named_apply(self.init_weights, module=self)
-
-    def init_weights(self, module, name, mean=0.0, std=0.01):
-        if isinstance(module, nn.Conv1d) or isinstance(module, nn.ConvTranspose1d):
-            module.weight.data.normal_(mean, std)
-
-            if module.bias is not None:
-                module.bias.data.zero_()
 
     def remove_weight_norm(self) -> None:
         remove_weight_norm(self.template_conv)

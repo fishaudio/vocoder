@@ -7,7 +7,7 @@ class RandomDiscontinuous(nn.Module):
     def __init__(
         self,
         probability: float = 1.0,
-        silent_range: tuple[float, float] = (0.01, 0.2),
+        silent_range: tuple[float, float] = (0.01, 0.1),
         silent_ratio_range: tuple[float, float] = (0.1, 0.2),
         sampling_rate: int = 44100,
     ) -> None:

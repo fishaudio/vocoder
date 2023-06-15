@@ -114,21 +114,8 @@ def main(cfg: DictConfig):
         model.train()
 
         for batch in train_dataloader:
-            bar.set_description("Training")
-            log_dict = training_step(
-                cfg=cfg,
-                fabric=fabric,
-                batch=batch,
-                model=model,
-                optim_g=optim_g,
-                optim_d=optim_d,
-            )
-            fabric.log_dict(log_dict, step=global_step)
-            global_step += 1
-            bar.update()
-
             # Validation
-            if global_step == 1 or global_step % cfg.loop.val_interval == 0:
+            if global_step % cfg.loop.val_interval == 0:
                 model.eval()
                 bar.set_description("Validating")
 
@@ -141,6 +128,19 @@ def main(cfg: DictConfig):
                         step=global_step + idx,
                     )
                     fabric.log_dict(log_dict, step=global_step + idx)
+
+            bar.set_description("Training")
+            log_dict = training_step(
+                cfg=cfg,
+                fabric=fabric,
+                batch=batch,
+                model=model,
+                optim_g=optim_g,
+                optim_d=optim_d,
+            )
+            fabric.log_dict(log_dict, step=global_step)
+            global_step += 1
+            bar.update()
 
             # Save checkpoint
             if global_step % cfg.loop.save_interval == 0:
@@ -156,10 +156,6 @@ def main(cfg: DictConfig):
                 )
 
                 logger.info(f"Saved checkpoint at {save_path}")
-
-            # Continue training
-            model.train()
-            bar.set_description("Training")
 
         # Update LR schedulers
         generator_lr_scheduler.step()
