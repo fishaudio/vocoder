@@ -1100,6 +1100,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "torch-summary"
+version = "1.4.5"
+requires_python = ">=3.6"
+summary = "Model summary in PyTorch, based off of the original torchsummary."
+
+[[package]]
 name = "torchaudio"
 version = "2.0.2"
 summary = "An audio package for PyTorch"
@@ -1239,7 +1245,7 @@ dependencies = [
 lock_version = "4.2"
 cross_platform = true
 groups = ["default", "dev"]
-content_hash = "sha256:b6c8d8655151662b106396e8dbc0c0ac5ea45b9da41950cff3f60047df4f75bd"
+content_hash = "sha256:ba1f04c2e2148ed03d7e8d1a427e3213a715a5072398ade5b30e90dc120e56a9"
 
 [metadata.files]
 "absl-py 1.4.0" = [
@@ -2632,6 +2638,10 @@ content_hash = "sha256:b6c8d8655151662b106396e8dbc0c0ac5ea45b9da41950cff3f60047d
     {url = "https://files.pythonhosted.org/packages/c8/21/25020cfdd9f564a72f400ee491610e50cb212e8add8031abaa959af6451e/torch-2.0.1-cp311-cp311-manylinux1_x86_64.whl", hash = "sha256:e617b1d0abaf6ced02dbb9486803abfef0d581609b09641b34fa315c9c40766d"},
     {url = "https://files.pythonhosted.org/packages/d0/c8/f0dc8642e3ce0a3ae5f05e5149ab9df5375d569294f7be9a1ab1d95a1d76/torch-2.0.1-cp311-cp311-win_amd64.whl", hash = "sha256:dbd68cbd1cd9da32fe5d294dd3411509b3d841baecb780b38b3b7b06c7754434"},
     {url = "https://files.pythonhosted.org/packages/e5/9a/ce0fe125f226ffce8deba6a18bd8d0b9f589aa236780a83a6d70b5525f56/torch-2.0.1-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:e10e1597f2175365285db1b24019eb6f04d53dcd626c735fc502f1e8b6be9875"},
+]
+"torch-summary 1.4.5" = [
+    {url = "https://files.pythonhosted.org/packages/ca/db/93d18c84f73b214acfa4d18051d6f4263eee3e044c408928e8abe941a22c/torch_summary-1.4.5-py3-none-any.whl", hash = "sha256:6127efb631f34ba8cbd28e92e8f7ddc2903ea0cbc44c80f15b7363b8f558cd8c"},
+    {url = "https://files.pythonhosted.org/packages/ff/2f/57cb3b23bccae7fc639ab7ff8bb78c80f03e8c0a144bbc69bfd26b0757f7/torch_summary-1.4.5.tar.gz", hash = "sha256:44eac21777dbbda7b8404d57a43c09d83fd9c93d0c1f0c960b5083ccb24d6d21"},
 ]
 "torchaudio 2.0.2" = [
     {url = "https://files.pythonhosted.org/packages/08/b6/f74ef8512d3c06ad544c72e773d2fcf02d2445b15b43ae7cc96ad88e8374/torchaudio-2.0.2-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:a8283dd61c579ea5b14d6773bbc0bf84573b12b37f05f02bb4b2425d77767284"},

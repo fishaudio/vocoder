@@ -281,7 +281,7 @@ class RefineGANGenerator(nn.Module):
             )
         )
 
-        named_apply(self.init_weight, module=self)
+        named_apply(self.init_weights, module=self)
 
     def init_weights(self, module, name, mean=0.0, std=0.01):
         if isinstance(module, nn.Conv1d) or isinstance(module, nn.ConvTranspose1d):

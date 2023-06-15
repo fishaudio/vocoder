@@ -67,7 +67,7 @@ class DiscriminatorP(nn.Module):
 
 class MultiPeriodDiscriminator(nn.Module):
     def __init__(self, periods: Optional[list[int]] = None):
-        super(MultiPeriodDiscriminator, self).__init__()
+        super().__init__()
 
         if periods is None:
             periods = [2, 3, 5, 7, 11]

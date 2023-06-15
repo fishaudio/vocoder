@@ -1,0 +1,14 @@
+_target_: lightning.Fabric
+
+accelerator: cuda
+devices: auto
+num_nodes: 1
+strategy: ddp
+
+# mixed precision for extra speed-up
+precision: "16-mixed"
+
+loggers:
+  - _target_: lightning.fabric.loggers.TensorBoardLogger
+    root_dir: ${paths.run_dir}/tensorboard/
+    name: null

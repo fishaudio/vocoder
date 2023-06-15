@@ -77,7 +77,7 @@ class DiscriminatorR(torch.nn.Module):
 
 class MultiResolutionDiscriminator(torch.nn.Module):
     def __init__(self, resolutions: list[tuple[int]]):
-        super(MultiResolutionDiscriminator, self).__init__()
+        super().__init__()
 
         self.discriminators = nn.ModuleList(
             [

@@ -2,6 +2,7 @@ defaults:
   - _self_
   - hydra: default
   - paths: default
+  - trainer: default
 
 task_name: refinegan_aug
 seed: 42
@@ -9,6 +10,9 @@ seed: 42
 global:
   sampling_rate: 44100
   num_mels: 128
+  n_fft: 2048
+  hop_length: 512
+  win_length: 2048
 
 data:
   _target_: fish_vocoder.data.datamodules.naive.NaiveDataModule
@@ -33,3 +37,72 @@ data:
         _target_: fish_vocoder.data.transforms.discontinuous.RandomDiscontinuous
         probability: 1
         sampling_rate: ${global.sampling_rate}
+
+
+model:
+  _target_: torch.nn.ModuleDict
+  modules:
+    source_mel_transform:
+      _target_: fish_vocoder.data.transforms.log_mel_spectrogram.LogMelSpectrogram
+      n_fft: ${global.n_fft}
+      hop_length: ${global.hop_length}
+      win_length: ${global.win_length}
+      sample_rate: ${global.sampling_rate}
+      n_mels: ${global.num_mels}
+      f_min: 40
+      f_max: 16000
+    
+    multi_scale_mels:
+      _target_: torch.nn.ModuleList
+      modules:
+        - _target_: torchaudio.transforms.MelSpectrogram
+          n_fft: ${global.n_fft}
+          hop_length: ${global.hop_length}
+          win_length: ${global.win_length}
+          sample_rate: ${global.sampling_rate}
+          n_mels: ${global.num_mels}
+        - _target_: torchaudio.transforms.MelSpectrogram
+          n_fft: 2048
+          hop_length: 270
+          win_length: 1080
+          sample_rate: ${global.sampling_rate}
+          n_mels: ${global.num_mels}
+        - _target_: torchaudio.transforms.MelSpectrogram
+          n_fft: 4096
+          hop_length: 540
+          win_length: 2160
+          sample_rate: ${global.sampling_rate}
+          n_mels: ${global.num_mels}
+
+    generator:
+      _target_: fish_vocoder.modules.generators.refinegan.RefineGANGenerator
+      sampling_rate: ${global.sampling_rate}
+      hop_length: ${global.hop_length}
+      downsample_rates: [2, 2, 2, 8, 8]
+      upsample_rates: [8, 8, 2, 2, 2]
+      leaky_relu_slope: 0.2
+      num_mels: ${global.num_mels}
+      start_channels: 16
+    
+    mpd:
+      _target_: fish_vocoder.modules.discriminators.mpd.MultiPeriodDiscriminator
+      periods: [3, 5, 7, 11, 17, 23, 37]
+    
+    mrd:
+      _target_: fish_vocoder.modules.discriminators.mrd.MultiResolutionDiscriminator
+      resolutions:
+        - [1024, 120, 600]
+        - [2048, 240, 1200]
+        - [512, 50, 240]
+
+optimizer:
+  _target_: torch.optim.AdamW
+  _partial_: true
+  lr: 2e-4
+  betas: [0.8, 0.99]
+  eps: 1e-6
+
+lr_scheduler:
+  _target_: torch.optim.lr_scheduler.ExponentialLR
+  _partial_: true
+  gamma: 0.999
