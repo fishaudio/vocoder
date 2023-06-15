@@ -165,8 +165,6 @@ def main(cfg: DictConfig):
         generator_lr_scheduler.step()
         discriminator_lr_scheduler.step()
 
-        global_epoch += 1
-
 
 def training_step(
     cfg: DictConfig,
