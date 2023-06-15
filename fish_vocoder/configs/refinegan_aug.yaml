@@ -5,7 +5,7 @@ defaults:
   - trainer: default
 
 task_name: refinegan_aug
-seed: 42
+seed: 594461
 
 base:
   sampling_rate: 44100
