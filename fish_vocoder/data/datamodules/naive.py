@@ -14,11 +14,17 @@ class NaiveDataModule(L.LightningDataModule):
         drop_last: bool = False,
         persistent_workers: bool = True,
         collate_fn: Optional[callable] = None,
+        train_batch_size: Optional[int] = None,
+        val_batch_size: Optional[int] = None,
+        test_batch_size: Optional[int] = None,
     ):
         super().__init__()
 
         self.splits: dict[str, Dataset] = datasets
         self.batch_size = batch_size
+        self.train_batch_size = train_batch_size or batch_size
+        self.val_batch_size = val_batch_size or batch_size
+        self.test_batch_size = test_batch_size or batch_size
         self.num_workers = num_workers
         self.pin_memory = pin_memory
         self.drop_last = drop_last
@@ -28,7 +34,7 @@ class NaiveDataModule(L.LightningDataModule):
     def train_dataloader(self) -> DataLoader:
         return DataLoader(
             self.splits["train"],
-            batch_size=self.batch_size,
+            batch_size=self.train_batch_size,
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
             drop_last=self.drop_last,
@@ -40,7 +46,7 @@ class NaiveDataModule(L.LightningDataModule):
     def val_dataloader(self) -> Optional[DataLoader]:
         return DataLoader(
             self.splits["val"],
-            batch_size=self.batch_size,
+            batch_size=self.val_batch_size,
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
             drop_last=self.drop_last,
@@ -56,7 +62,7 @@ class NaiveDataModule(L.LightningDataModule):
 
         return DataLoader(
             self.splits["test"],
-            batch_size=self.batch_size,
+            batch_size=self.test_batch_size,
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
             drop_last=False,

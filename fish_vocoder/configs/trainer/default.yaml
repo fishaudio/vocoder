@@ -1,4 +1,6 @@
 _target_: lightning.Fabric
+# need to convert primitive types, otherwise logger will not be list
+_convert_: partial
 
 accelerator: cuda
 devices: auto

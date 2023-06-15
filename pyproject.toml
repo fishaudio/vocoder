@@ -22,6 +22,7 @@ dependencies = [
     "pyrootutils>=1.0.4",
     "hydra-colorlog>=1.2.0",
     "torch-summary>=1.4.5",
+    "matplotlib>=3.7.1",
 ]
 
 [tool.pdm]

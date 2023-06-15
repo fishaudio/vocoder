@@ -10,7 +10,10 @@ data_dir: ${paths.root_dir}/data/
 log_dir: ${paths.root_dir}/logs/
 
 # path to runs directory
-run_dir: ${paths.log_dir}/${task_name}/runs/${now:%Y-%m-%d}_${now:%H-%M-%S}
+run_dir: ${paths.log_dir}/${task_name}
+
+# path to ckpt directory
+ckpt_dir: ${paths.run_dir}/checkpoints/
 
 # path to output directory, created dynamically by hydra
 # path generation pattern is specified in `configs/hydra/default.yaml`
