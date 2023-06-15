@@ -4,7 +4,7 @@ defaults:
   - paths: default
   - trainer: default
 
-task_name: refinegan_aug
+task_name: refine
 seed: 594461
 
 base:
