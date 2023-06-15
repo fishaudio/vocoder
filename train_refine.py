@@ -26,7 +26,7 @@ from fish_vocoder.utils.logger import logger
 from fish_vocoder.utils.viz import plot_mel
 
 
-@hydra.main(config_path="fish_vocoder/configs", version_base="1.3")
+@hydra.main(config_path="fish_vocoder/configs", version_base="1.3", config_name="refine")
 def main(cfg: DictConfig):
     logger.add(f"{cfg.paths.run_dir}/train.log")
     logger.info(f"Config: {OmegaConf.to_yaml(cfg)}")
