@@ -140,7 +140,10 @@ def main(cfg: DictConfig):
                 optim_g=optim_g,
                 optim_d=optim_d,
             )
-            fabric.log_dict(log_dict, step=global_step)
+
+            if global_step % cfg.loop.log_interval == 0:
+                fabric.log_dict(log_dict, step=global_step)
+
             global_step += 1
             bar.update()
 

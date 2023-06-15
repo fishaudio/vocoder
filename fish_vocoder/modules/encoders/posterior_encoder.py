@@ -136,14 +136,21 @@ class PosteriorEncoder(nn.Module):
         self.proj = nn.Conv1d(hidden_channels, out_channels * 2, 1)
         self.bn = VAEBatchNorm1d(out_channels)
 
-    def forward(self, x, x_lengths):
-        x_mask = torch.unsqueeze(sequence_mask(x_lengths, x.size(2)), 1).to(x.dtype)
+    def forward(self, x, x_lengths=None):
+        if x_lengths is not None:
+            x_mask = sequence_mask(x_lengths, x.size(2))[:, None].to(
+                device=x.device, dtype=x.dtype
+            )
+        else:
+            x_mask = torch.ones(x.size(0), 1, x.size(2), dtype=x.dtype, device=x.device)
+
         x = self.pre(x) * x_mask
         x = self.enc(x, x_mask)
 
         stats = self.proj(x) * x_mask
-        mean, logs = torch.split(stats, self.out_channels, dim=1)
-        std = torch.exp(logs)
+        mean, logvar = torch.split(stats, self.out_channels, dim=1)
+        logvar = torch.clamp(logvar, min=-30, max=20)
+        std = torch.exp(0.5 * logvar)
 
         # BN-VAE: https://kexue.fm/archives/7381/
         mean = self.bn(mean, positive=True)
@@ -151,7 +158,7 @@ class PosteriorEncoder(nn.Module):
 
         z = (mean + torch.randn_like(mean) * std) * x_mask
 
-        return z, mean, logs, x_mask
+        return z, mean, std, x_mask
 
     def remove_weight_norm(self):
         self.enc.remove_weight_norm()

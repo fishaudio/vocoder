@@ -37,7 +37,6 @@ data:
           - _target_: fish_vocoder.data.transforms.crop.RandomCrop
             probability: 1
             crop_length: "${eval: '${base.hop_length} * 50'}"
-            padding: true
       augment_transform:
         _target_: fish_vocoder.data.transforms.discontinuous.RandomDiscontinuous
         probability: 1
@@ -52,7 +51,6 @@ data:
           - _target_: fish_vocoder.data.transforms.crop.RandomCrop
             probability: 1
             crop_length: "${eval: '${base.hop_length} * 1000'}"
-            padding: true
       augment_transform:
         _target_: fish_vocoder.data.transforms.discontinuous.RandomDiscontinuous
         probability: 1
@@ -139,6 +137,7 @@ lr_scheduler:
   gamma: 0.999
 
 loop:
+  log_interval: 50
   val_interval: 5000
   save_interval: 5000
   max_steps: 1000000

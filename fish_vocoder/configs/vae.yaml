@@ -17,7 +17,7 @@ base:
 
 data:
   _target_: fish_vocoder.data.datamodules.naive.NaiveDataModule
-  batch_size: 4
+  batch_size: 16
   val_batch_size: 2
   num_workers: 2
 
@@ -37,23 +37,31 @@ data:
             sampling_rate: ${base.sampling_rate}
           - _target_: fish_vocoder.data.transforms.crop.RandomCrop
             probability: 1
-            crop_length: "${eval: '${base.hop_length} * 50'}"
-            padding: true
+            crop_length: "${eval: '${base.hop_length} * 25'}"
 
     val:
       _target_: fish_vocoder.data.datasets.vae.VAEDataset
       root: dataset/valid
-      ransform:
+      transform:
         _target_: torch.nn.Sequential
         _args_:
           - _target_: fish_vocoder.data.transforms.crop.RandomCrop
             probability: 1
             crop_length: "${eval: '${base.hop_length} * 1000'}"
-            padding: true
 
 model:
   _target_: torch.nn.ModuleDict
   modules:
+    viz_mel_transform:
+      _target_: fish_vocoder.data.transforms.log_mel_spectrogram.LogMelSpectrogram
+      n_fft: ${base.n_fft}
+      hop_length: ${base.hop_length}
+      win_length: ${base.win_length}
+      sample_rate: ${base.sampling_rate}
+      n_mels: ${base.num_mels}
+      f_min: 40
+      f_max: 16000
+
     spectrogram_transform:
       _target_: torchaudio.transforms.Spectrogram
       n_fft: ${base.n_fft}
@@ -98,7 +106,7 @@ model:
     posterior_encoder:
       _target_: fish_vocoder.modules.encoders.posterior_encoder.PosteriorEncoder
       # The input is a linear spectrogram
-      in_channels: "${eval: '${base.sampling_rate} // 2 + 1'}"
+      in_channels: "${eval: '${base.n_fft} // 2 + 1'}"
       out_channels: ${base.hidden_size}
       hidden_channels: ${base.hidden_size}
 
@@ -126,6 +134,7 @@ lr_scheduler:
   gamma: 0.999
 
 loop:
+  log_interval: 50
   val_interval: 5000
   save_interval: 5000
   max_steps: 1000000
