@@ -16,7 +16,7 @@ class RandomPadCrop(nn.Module):
         self.padding = padding
 
     def forward(self, waveform: Tensor) -> Tensor:
-        if torch.rand(1) > self.probability:
+        if torch.rand(1) > self.probability or waveform.shape[-1] == self.crop_length:
             return waveform
 
         if self.padding and waveform.shape[-1] < self.crop_length:

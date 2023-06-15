@@ -6,7 +6,7 @@ from torch import Tensor, nn
 class RandomHQPitchShift(nn.Module):
     def __init__(
         self,
-        probability: float = 0.5,
+        probability: float = 1.0,
         pitch_range: int | tuple[int, int] = 12,
         sampling_rate: int = 44100,
     ) -> None:
