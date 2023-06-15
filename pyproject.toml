@@ -1,0 +1,49 @@
+[project]
+name = "fish-vocoder"
+version = "0.0.0"
+description = ""
+license = {text = "MIT"}
+authors = [
+    {name = "Lengyue", email = "lengyue@lengyue.me"},
+]
+requires-python = ">=3.10,<4.0"
+dependencies = [
+    "librosa<1.0.0,>=0.9.1",
+    "numba<1.0.0,>=0.56.4",
+    "wandb<1.0.0,>=0.13.9",
+    "loguru<1.0.0,>=0.6.0",
+    "tensorboard<3.0.0,>=2.11.2",
+    "natsort<9.0.0,>=8.3.1",
+    "torch<3.0.0,>=2.0.0",
+    "torchaudio<3.0.0,>=2.0.0",
+    "pytorch-lightning<3.0.0,>=2.0.2",
+]
+
+[tool.pdm]
+[tool.pdm.build]
+includes = ["fish_vocoder"]
+
+[tool.pdm.dev-dependencies]
+dev = [
+    "isort>=5.12.0",
+    "black>=22.12.0",
+    "pytest>=7.3.1",
+]
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm.scripts]
+lint = { shell = "black . && isort ." }
+test = { shell = "PYTHONPATH=. pytest -n=auto -q tests" }
+
+[[tool.pdm.source]]
+type = "find_links"
+name = "torch-cu118"
+url = "https://download.pytorch.org/whl/cu118"
+verify_ssl = true
+
+[tool.isort]
+profile = "black"
+extend_skip = ["dataset", "logs"]
