@@ -13,6 +13,8 @@ from omegaconf import DictConfig, OmegaConf
 from torchsummary import summary
 from tqdm.rich import tqdm
 
+from fish_vocoder.utils.mask import sequence_mask
+
 # Allow TF32 on Ampere GPUs
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
@@ -26,9 +28,7 @@ from fish_vocoder.utils.logger import logger
 from fish_vocoder.utils.viz import plot_mel
 
 
-@hydra.main(
-    config_path="fish_vocoder/configs", version_base="1.3", config_name="refine"
-)
+@hydra.main(config_path="fish_vocoder/configs", version_base="1.3", config_name="vae")
 def main(cfg: DictConfig):
     logger.add(f"{cfg.paths.run_dir}/train.log")
     logger.info(f"Config: {OmegaConf.to_yaml(cfg)}")
@@ -41,13 +41,24 @@ def main(cfg: DictConfig):
     logger.info(f"Data: {data}")
 
     model = instantiate(cfg.model)
-    generator_summary = summary(model.generator, [(128, 85), (1, 43520)], verbose=0)
+
+    posterior_encoder_summary = summary(
+        model.posterior_encoder,
+        (cfg.model.modules.posterior_encoder.in_channels, 85),
+        verbose=0,
+    )
+    logger.info(f"Posterior encoder summary:\n{posterior_encoder_summary}")
+
+    template_len = cfg.base.hop_length * 85
+    generator_summary = summary(
+        model.generator, [(cfg.base.hidden_size, 85), (1, template_len)], verbose=0
+    )
     logger.info(f"Generator summary:\n{generator_summary}")
 
-    mpd_summary = summary(model.mpd, (1, 43520), verbose=0)
+    mpd_summary = summary(model.mpd, (1, template_len), verbose=0)
     logger.info(f"MPD summary:\n{mpd_summary}")
 
-    mrd_summary = summary(model.mrd, (1, 43520), verbose=0)
+    mrd_summary = summary(model.mrd, (1, template_len), verbose=0)
     logger.info(f"MRD summary:\n{mrd_summary}")
 
     optimizer_partial = instantiate(cfg.optimizer)
@@ -140,7 +151,10 @@ def main(cfg: DictConfig):
                 optim_g=optim_g,
                 optim_d=optim_d,
             )
-            fabric.log_dict(log_dict, step=global_step)
+
+            if global_step % cfg.loop.log_interval == 0:
+                fabric.log_dict(log_dict, step=global_step)
+
             global_step += 1
             bar.update()
 
@@ -174,16 +188,22 @@ def training_step(
 ) -> dict:
     log_dict = {}
 
-    source_y = batch["source"]
-    gt_y = batch["target"]
+    gt_y, lengths = batch["audio"], batch["lengths"]
+    y_mask = sequence_mask(lengths)[:, None, :].to(gt_y.device)
 
-    gt_mels = model.source_mel_transform(gt_y.squeeze(1))
-    gt_mels = gt_mels[..., : (gt_y.shape[-1] // model.source_mel_transform.hop_length)]
-    g_hat_y = model.generator(gt_mels, source_y)
+    # Forward VAE
+    with torch.no_grad():
+        gt_spec = model.spectrogram_transform(gt_y.squeeze(1))
+
+    spec_lengths = lengths // cfg.base.hop_length
+    z, mean, std, _ = model.posterior_encoder(gt_spec, spec_lengths)
+    g_hat_y = model.generator(z)
 
     min_length = min(g_hat_y.shape[-1], gt_y.shape[-1])
     g_hat_y = g_hat_y[..., :min_length]
     gt_y = gt_y[..., :min_length]
+
+    g_hat_y = g_hat_y * y_mask
 
     # Scale Invariant SNR
     with torch.no_grad():
@@ -234,7 +254,12 @@ def training_step(
     loss_mrd = generator_adv_loss(y_g_hat_x)
     log_dict["train/loss_mrd"] = loss_mrd
 
-    loss_g = loss_mel * 45 + loss_envelope + loss_mpd + loss_mrd
+    # KL Loss
+    loss_kl = kl_loss(mean, std)
+    log_dict["train/loss_kl"] = loss_kl
+
+    # All generator Loss
+    loss_g = loss_mel * 45 + loss_envelope + loss_mpd + loss_mrd + loss_kl
     log_dict["train/loss_g"] = loss_g
 
     fabric.backward(loss_g)
@@ -253,16 +278,20 @@ def validation_step(
 ) -> dict:
     log_dict = {}
 
-    source_y = batch["source"]
-    gt_y = batch["target"]
+    gt_y, lengths = batch["audio"], batch["lengths"]
+    y_mask = sequence_mask(lengths)[:, None, :].to(gt_y.device)
 
-    gt_mels = model.source_mel_transform(gt_y.squeeze(1))
-    gt_mels = gt_mels[..., : (gt_y.shape[-1] // model.source_mel_transform.hop_length)]
-    g_hat_y = model.generator(gt_mels, source_y)
+    # Forward VAE
+    gt_spec = model.spectrogram_transform(gt_y.squeeze(1))
+    spec_lengths = lengths // cfg.base.hop_length
+    z, mean, std, _ = model.posterior_encoder(gt_spec, spec_lengths)
+    g_hat_y = model.generator(z)
 
     min_length = min(g_hat_y.shape[-1], gt_y.shape[-1])
     g_hat_y = g_hat_y[..., :min_length]
     gt_y = gt_y[..., :min_length]
+
+    g_hat_y = g_hat_y * y_mask
 
     # Scale Invariant SNR
     with torch.no_grad():
@@ -275,6 +304,10 @@ def validation_step(
     loss_mel = generator_mel_loss(gt_y, g_hat_y, model.multi_scale_mel_transforms)
     log_dict["val/loss_mel"] = loss_mel
 
+    # KL Loss
+    loss_kl = kl_loss(mean, std)
+    log_dict["val/loss_kl"] = loss_kl
+
     # Log Audio and Mel Spectrograms
     tb_loggers = [
         logger for logger in fabric.loggers if isinstance(logger, TensorBoardLogger)
@@ -282,37 +315,30 @@ def validation_step(
     if len(tb_loggers) == 0:
         return log_dict
 
-    source_mel_spec = model.source_mel_transform(source_y.squeeze(1))
-    gt_mel_spec = model.source_mel_transform(gt_y.squeeze(1))
-    gen_mel_spec = model.source_mel_transform(g_hat_y.squeeze(1))
+    gt_mel_spec = model.viz_mel_transform(gt_y.squeeze(1))
+    gen_mel_spec = model.viz_mel_transform(g_hat_y.squeeze(1))
 
     for tb_logger in tb_loggers:
-        for idx, (source, y, y_hat, soruce_mel, gt_mel, gen_mel) in enumerate(
-            zip(source_y, gt_y, g_hat_y, source_mel_spec, gt_mel_spec, gen_mel_spec)
+        for idx, (y, y_hat, y_length, gt_mel, gen_mel, mel_len) in enumerate(
+            zip(gt_y, g_hat_y, lengths, gt_mel_spec, gen_mel_spec, spec_lengths)
         ):
             tb_logger.experiment.add_audio(
-                f"audio-{idx}/source",
-                source,
-                step,
-                cfg.base.sampling_rate,
-            )
-
-            tb_logger.experiment.add_audio(
                 f"audio-{idx}/target",
-                y,
+                y[..., :y_length],
                 step,
                 cfg.base.sampling_rate,
             )
 
             tb_logger.experiment.add_audio(
                 f"audio-{idx}/generated",
-                y_hat,
+                y_hat[..., :y_length],
                 step,
                 cfg.base.sampling_rate,
             )
 
             mel_fig = plot_mel(
-                [soruce_mel, gt_mel, gen_mel], ["Source", "Target", "Generated"]
+                [gt_mel[..., :mel_len], gen_mel[..., :mel_len]],
+                ["Ground Truth", "Generated"],
             )
 
             tb_logger.experiment.add_figure(
@@ -373,6 +399,10 @@ def discriminator_loss(disc_real_outputs, disc_generated_outputs):
         losses.append((r_loss + g_loss) / 2)
 
     return sum(losses) / len(losses)
+
+
+def kl_loss(mean, std):
+    return 0.5 * torch.sum(mean**2 + std**2 - torch.log(std**2) - 1, dim=1).mean()
 
 
 if __name__ == "__main__":
