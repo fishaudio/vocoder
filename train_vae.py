@@ -197,7 +197,7 @@ def training_step(
         gt_spec = gt_spec[..., : lengths.max() // cfg.base.hop_length]
 
     spec_lengths = lengths // cfg.base.hop_length
-    z, mean, std, z_mask = model.posterior_encoder(gt_spec, spec_lengths)
+    z, mean, logvar, z_mask = model.posterior_encoder(gt_spec, spec_lengths)
     g_hat_y = model.generator(z)
 
     min_length = min(g_hat_y.shape[-1], gt_y.shape[-1])
@@ -256,7 +256,7 @@ def training_step(
     log_dict["train/loss_mrd"] = loss_mrd
 
     # KL Loss
-    loss_kl = kl_loss(mean, std, z_mask)
+    loss_kl = kl_loss(mean, logvar, z_mask)
     log_dict["train/loss_kl"] = loss_kl
 
     # All generator Loss
@@ -287,7 +287,7 @@ def validation_step(
     gt_spec = gt_spec[..., : lengths.max() // cfg.base.hop_length]
 
     spec_lengths = lengths // cfg.base.hop_length
-    z, mean, std, z_mask = model.posterior_encoder(gt_spec, spec_lengths)
+    z, mean, logvar, z_mask = model.posterior_encoder(gt_spec, spec_lengths)
     g_hat_y = model.generator(z)
 
     min_length = min(g_hat_y.shape[-1], gt_y.shape[-1])
@@ -308,7 +308,7 @@ def validation_step(
     log_dict["val/loss_mel"] = loss_mel
 
     # KL Loss
-    loss_kl = kl_loss(mean, std, z_mask)
+    loss_kl = kl_loss(mean, logvar, z_mask)
     log_dict["val/loss_kl"] = loss_kl
 
     # Log Audio and Mel Spectrograms
@@ -404,22 +404,40 @@ def discriminator_loss(disc_real_outputs, disc_generated_outputs):
     return sum(losses) / len(losses)
 
 
-@torch.autocast("cuda", enabled=False)
-def kl_loss(mean, std, mask):
-    losses = 0.5 * (mean**2 + std**2 - torch.log(std**2) - 1)
+# @torch.autocast("cuda", enabled=False)
+def kl_loss(mean, logvar, mask):
+    # B, D, T -> B, 1, T
+    losses = 0.5 * (mean**2 + torch.exp(logvar) - logvar - 1).sum(dim=1, keepdim=True)
+
+    assert losses.shape == mask.shape
 
     if torch.isinf(torch.masked_select(losses, mask.to(bool)).mean()):
         print(
-            mean.shape,
-            std.shape,
-            losses.shape,
+            "max_mean",
             torch.max(mean),
-            torch.max(std),
+            "min_mean",
+            torch.min(mean),
+            "max_logvar",
+            torch.max(logvar),
+            "min_logvar",
+            torch.min(logvar),
+            "max_mean**2",
             torch.max(mean**2),
-            torch.max(std**2),
-            torch.max(torch.log(std**2)),
-            torch.masked_select(losses, mask.to(bool)).mean()
+            "min_mean**2",
+            torch.min(mean**2),
+            "max_exp_logvar",
+            torch.max(torch.exp(logvar)),
+            "min_exp_logvar",
+            torch.min(torch.exp(logvar)),
+            "max_loss",
+            torch.max(losses),
+            "min_loss",
+            torch.min(losses),
+            torch.masked_select(losses, mask.to(bool)).mean(),
+            sep="\n",
+            end="----------------\n",
         )
+
     return torch.masked_select(losses, mask.to(bool)).mean()
 
 

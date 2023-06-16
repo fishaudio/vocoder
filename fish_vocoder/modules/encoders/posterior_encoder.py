@@ -88,11 +88,13 @@ class WaveNet(nn.Module):
 
 
 class VAEBatchNorm1d(nn.Module):
+    # BN-VAE (Modified): https://kexue.fm/archives/7381/
+
     def __init__(self, num_features, eps=1e-5, tau=0.5):
         super().__init__()
 
         self.bn = nn.BatchNorm1d(num_features, affine=False)
-    
+
         self.scale = nn.Parameter(torch.zeros(1, num_features, 1))
         self.eps = eps
         self.tau = tau
@@ -101,9 +103,9 @@ class VAEBatchNorm1d(nn.Module):
         x = self.bn(x)
 
         if positive:
-            scale = self.tau + (1 - self.tau) * torch.sigmoid(self.scale)
+            scale = 1 - self.tau * torch.sigmoid(self.scale)
         else:
-            scale = (1 - self.tau) * torch.sigmoid(-self.scale)
+            scale = self.tau * torch.sigmoid(self.scale)
 
         return x * torch.sqrt(scale)
 
@@ -134,7 +136,10 @@ class PosteriorEncoder(nn.Module):
             n_layers,
         )
         self.proj = nn.Conv1d(hidden_channels, out_channels * 2, 1)
-        self.bn = VAEBatchNorm1d(out_channels)
+
+        self.mu_bn = nn.BatchNorm1d(out_channels, affine=True)
+        self.mu_bn.weight.requires_grad = False
+        self.mu_bn.weight.fill_(0.5)
 
     def forward(self, x, x_lengths=None):
         if x_lengths is not None:
@@ -149,16 +154,13 @@ class PosteriorEncoder(nn.Module):
 
         stats = self.proj(x) * x_mask
         mean, logvar = torch.split(stats, self.out_channels, dim=1)
+
         logvar = torch.clamp(logvar, min=-30, max=20)
-        std = torch.exp(0.5 * logvar)
+        mean = self.mu_bn(mean)
 
-        # BN-VAE: https://kexue.fm/archives/7381/
-        mean = self.bn(mean, positive=True)
-        std = self.bn(std, positive=False)
+        z = (mean + torch.randn_like(mean) * torch.exp(0.5 * logvar)) * x_mask
 
-        z = (mean + torch.randn_like(mean) * std) * x_mask
-
-        return z, mean, std, x_mask
+        return z, mean, logvar, x_mask
 
     def remove_weight_norm(self):
         self.enc.remove_weight_norm()
