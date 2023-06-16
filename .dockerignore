@@ -1,0 +1,10 @@
+logs
+checkpoints
+.venv
+dataset
+build
+tests
+.git
+data
+build
+*.log
