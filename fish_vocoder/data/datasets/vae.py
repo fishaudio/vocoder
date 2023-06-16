@@ -7,6 +7,8 @@ import torchaudio.functional as AF
 from torch import Tensor
 from torch.utils.data import Dataset
 
+from fish_vocoder.utils.file import AUDIO_EXTENSIONS, list_files
+
 
 class VAEDataset(Dataset):
     def __init__(
@@ -23,7 +25,7 @@ class VAEDataset(Dataset):
         ), f"Sampling rate must be positive, got {sampling_rate}."
         assert transform is not None, "transform must be provided."
 
-        self.audio_paths = list(Path(root).rglob("**/*.wav"))
+        self.audio_paths = list_files(root, AUDIO_EXTENSIONS, recursive=True)
         self.sampling_rate = sampling_rate
         self.transform = transform
 

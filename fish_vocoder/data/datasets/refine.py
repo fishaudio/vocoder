@@ -7,6 +7,8 @@ import torchaudio.functional as AF
 from torch import Tensor
 from torch.utils.data import Dataset
 
+from fish_vocoder.utils.file import AUDIO_EXTENSIONS, list_files
+
 
 class AudioRefineDataset(Dataset):
     def __init__(
@@ -25,7 +27,7 @@ class AudioRefineDataset(Dataset):
         assert base_transform is not None, "Base transform must be provided."
         assert augment_transform is not None, "Augment transform must be provided."
 
-        self.audio_paths = list(Path(root).rglob("**/*.wav"))
+        self.audio_paths = list_files(root, AUDIO_EXTENSIONS, recursive=True)
         self.sampling_rate = sampling_rate
         self.base_transform = base_transform
         self.augment_transform = augment_transform
