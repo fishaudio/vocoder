@@ -137,9 +137,9 @@ class PosteriorEncoder(nn.Module):
         )
         self.proj = nn.Conv1d(hidden_channels, out_channels * 2, 1)
 
-        self.mu_bn = nn.BatchNorm1d(out_channels, affine=True)
-        self.mu_bn.weight.requires_grad = False
-        self.mu_bn.weight.fill_(0.5)
+        # self.mu_bn = nn.BatchNorm1d(out_channels, affine=True)
+        # self.mu_bn.weight.requires_grad = False
+        # self.mu_bn.weight.fill_(0.5)
 
     def forward(self, x, x_lengths=None):
         if x_lengths is not None:
@@ -156,7 +156,7 @@ class PosteriorEncoder(nn.Module):
         mean, logvar = torch.split(stats, self.out_channels, dim=1)
 
         logvar = torch.clamp(logvar, min=-30, max=20)
-        mean = self.mu_bn(mean)
+        # mean = self.mu_bn(mean)
 
         z = (mean + torch.randn_like(mean) * torch.exp(0.5 * logvar)) * x_mask
 

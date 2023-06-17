@@ -77,12 +77,10 @@ def main(cfg: DictConfig):
 
     # Instantiate optimizer and LR scheduler here, so that FSDP can work properly
     optim_g = optimizer_partial(params=model.generator.parameters())
-    generator_lr_scheduler = lr_scheduler_partial(optimizer=optim_g)
 
     optim_d = optimizer_partial(
         params=[*model.mpd.parameters(), *model.mrd.parameters()]
     )
-    discriminator_lr_scheduler = lr_scheduler_partial(optimizer=optim_d)
 
     optim_g, optim_d = fabric.setup_optimizers(optim_g, optim_d)
 
@@ -108,6 +106,10 @@ def main(cfg: DictConfig):
             global_step = remainder["global_step"]
 
     ckpt_dir.mkdir(parents=True, exist_ok=True)
+
+    # Setup LR scheduler
+    generator_lr_scheduler = lr_scheduler_partial(optimizer=optim_g)
+    discriminator_lr_scheduler = lr_scheduler_partial(optimizer=optim_d)
 
     bar = tqdm(
         desc="Training",

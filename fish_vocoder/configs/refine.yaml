@@ -61,7 +61,7 @@ model:
   _target_: torch.nn.ModuleDict
   modules:
     source_mel_transform:
-      _target_: fish_vocoder.data.transforms.log_mel_spectrogram.LogMelSpectrogram
+      _target_: fish_vocoder.data.transforms.spectrogram.LogMelSpectrogram
       n_fft: ${base.n_fft}
       hop_length: ${base.hop_length}
       win_length: ${base.win_length}
@@ -73,19 +73,19 @@ model:
     multi_scale_mel_transforms:
       _target_: torch.nn.ModuleList
       modules:
-        - _target_: fish_vocoder.data.transforms.log_mel_spectrogram.LogMelSpectrogram
+        - _target_: fish_vocoder.data.transforms.spectrogram.LogMelSpectrogram
           n_fft: ${base.n_fft}
           hop_length: ${base.hop_length}
           win_length: ${base.win_length}
           sample_rate: ${base.sampling_rate}
           n_mels: ${base.num_mels}
-        - _target_: fish_vocoder.data.transforms.log_mel_spectrogram.LogMelSpectrogram
+        - _target_: fish_vocoder.data.transforms.spectrogram.LogMelSpectrogram
           n_fft: 2048
           hop_length: 270
           win_length: 1080
           sample_rate: ${base.sampling_rate}
           n_mels: ${base.num_mels}
-        - _target_: fish_vocoder.data.transforms.log_mel_spectrogram.LogMelSpectrogram
+        - _target_: fish_vocoder.data.transforms.spectrogram.LogMelSpectrogram
           n_fft: 4096
           hop_length: 540
           win_length: 2160
