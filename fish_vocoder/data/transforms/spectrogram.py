@@ -60,6 +60,8 @@ class LogMelSpectrogram(nn.Module):
         f_min=0.0,
         f_max=None,
     ):
+        super().__init__()
+
         self.sample_rate = sample_rate
         self.n_mels = n_mels
         self.f_min = f_min
