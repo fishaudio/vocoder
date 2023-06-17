@@ -360,8 +360,8 @@ def generator_mel_loss(y, y_hat, multi_scale_mel_transforms):
     loss_mel = []
 
     for mel_transform in multi_scale_mel_transforms:
-        y_mel = mel_transform(y)
-        y_g_hat_mel = mel_transform(y_hat)
+        y_mel = mel_transform(y.squeeze(1))
+        y_g_hat_mel = mel_transform(y_hat.squeeze(1))
         loss_mel.append(F.l1_loss(y_mel, y_g_hat_mel))
 
     return sum(loss_mel) / len(loss_mel)

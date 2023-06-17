@@ -63,11 +63,15 @@ class LogMelSpectrogram(nn.Module):
         super().__init__()
 
         self.sample_rate = sample_rate
+        self.n_fft = n_fft
+        self.win_length = win_length
+        self.hop_length = hop_length
+        self.center = center
         self.n_mels = n_mels
         self.f_min = f_min
         self.f_max = f_max or sample_rate // 2
 
-        self.spec = LinearSpectrogram(n_fft, win_length, hop_length, center)
+        self.spectrogram = LinearSpectrogram(n_fft, win_length, hop_length, center)
         self.mel_scale = MelScale(
             self.n_mels,
             self.sample_rate,
@@ -85,7 +89,7 @@ class LogMelSpectrogram(nn.Module):
         return torch.exp(x)
 
     def forward(self, x: Tensor) -> Tensor:
-        x = self.spec(x)
+        x = self.spectrogram(x)
         x = self.mel_scale(x)
         x = self.compress(x)
 
