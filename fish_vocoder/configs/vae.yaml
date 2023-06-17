@@ -70,7 +70,7 @@ model:
       n_fft: ${base.n_fft}
       hop_length: ${base.hop_length}
       win_length: ${base.win_length}
-    
+
     multi_scale_mel_transforms:
       _target_: torch.nn.ModuleList
       modules:
@@ -92,7 +92,7 @@ model:
           win_length: 2160
           sample_rate: ${base.sampling_rate}
           n_mels: ${base.num_mels}
-    
+
     generator:
       _target_: fish_vocoder.modules.generators.hifigan.HiFiGANGenerator
       hop_length: ${base.hop_length}
@@ -104,7 +104,7 @@ model:
       num_mels: ${base.hidden_size}
       upsample_initial_channel: 512
       use_template: false
-    
+
     posterior_encoder:
       _target_: fish_vocoder.modules.encoders.posterior_encoder.PosteriorEncoder
       # The input is a linear spectrogram
@@ -115,7 +115,7 @@ model:
     mpd:
       _target_: fish_vocoder.modules.discriminators.mpd.MultiPeriodDiscriminator
       periods: [3, 5, 7, 11, 17, 23, 37]
-    
+
     mrd:
       _target_: fish_vocoder.modules.discriminators.mrd.MultiResolutionDiscriminator
       resolutions:

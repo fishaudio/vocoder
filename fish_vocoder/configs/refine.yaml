@@ -56,7 +56,6 @@ data:
         probability: 1
         sampling_rate: ${base.sampling_rate}
 
-
 model:
   _target_: torch.nn.ModuleDict
   modules:
@@ -69,7 +68,7 @@ model:
       n_mels: ${base.num_mels}
       f_min: 40
       f_max: 16000
-    
+
     multi_scale_mel_transforms:
       _target_: torch.nn.ModuleList
       modules:
@@ -101,7 +100,7 @@ model:
     #   leaky_relu_slope: 0.2
     #   num_mels: ${base.num_mels}
     #   start_channels: 16
-    
+
     generator:
       _target_: fish_vocoder.modules.generators.hifigan.HiFiGANGenerator
       hop_length: ${base.hop_length}
@@ -116,7 +115,7 @@ model:
     mpd:
       _target_: fish_vocoder.modules.discriminators.mpd.MultiPeriodDiscriminator
       periods: [3, 5, 7, 11, 17, 23, 37]
-    
+
     mrd:
       _target_: fish_vocoder.modules.discriminators.mrd.MultiResolutionDiscriminator
       resolutions:

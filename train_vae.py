@@ -193,7 +193,6 @@ def training_step(
     # Forward VAE
     with torch.no_grad():
         gt_spec = model.spectrogram_transform(gt_y.squeeze(1))
-        gt_spec = gt_spec[..., : lengths.max() // cfg.base.hop_length]
 
     spec_lengths = lengths // cfg.base.hop_length
     z, mean, logvar, z_mask = model.posterior_encoder(gt_spec, spec_lengths)
@@ -283,8 +282,6 @@ def validation_step(
 
     # Forward VAE
     gt_spec = model.spectrogram_transform(gt_y.squeeze(1))
-    gt_spec = gt_spec[..., : lengths.max() // cfg.base.hop_length]
-
     spec_lengths = lengths // cfg.base.hop_length
     z, mean, logvar, z_mask = model.posterior_encoder(gt_spec, spec_lengths)
     g_hat_y = model.generator(z)
