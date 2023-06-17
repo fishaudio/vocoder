@@ -126,14 +126,16 @@ model:
 optimizer:
   _target_: torch.optim.AdamW
   _partial_: true
-  lr: 1e-4
+  lr: 2e-4
   betas: [0.8, 0.99]
   eps: 1e-6
 
 lr_scheduler:
-  _target_: torch.optim.lr_scheduler.ExponentialLR
-  _partial_: true
-  gamma: 0.999
+  _target_: fish_vocoder.schedulers.warmup_cosine.LambdaWarmUpCosineScheduler
+  val_base: 2e-4
+  val_final: 1e-5
+  max_decay_steps: 1000000
+  warm_up_steps: 10000
 
 loop:
   log_interval: 50

@@ -10,7 +10,7 @@ requires-python = ">=3.10,<4.0"
 dependencies = [
     "librosa<1.0.0,>=0.9.1",
     "numba<1.0.0,>=0.56.4",
-    "wandb<1.0.0,>=0.13.9",
+    "wandb>=0.15.4",
     "loguru>=0.7.0",
     "tensorboard<3.0.0,>=2.11.2",
     "natsort<9.0.0,>=8.3.1",

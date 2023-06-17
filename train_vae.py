@@ -64,8 +64,8 @@ def main(cfg: DictConfig):
     optimizer_partial = instantiate(cfg.optimizer)
     logger.info(f"Optimizer: {optimizer_partial}")
 
-    lr_scheduler_partial = instantiate(cfg.lr_scheduler)
-    logger.info(f"LR scheduler: {lr_scheduler_partial}")
+    lr_scheduler = instantiate(cfg.lr_scheduler)
+    logger.info(f"LR scheduler: {lr_scheduler}")
 
     fabric: L.Fabric = instantiate(cfg.trainer)
     logger.info(f"Trainer: {fabric}")
@@ -107,10 +107,6 @@ def main(cfg: DictConfig):
 
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
-    # Setup LR scheduler
-    generator_lr_scheduler = lr_scheduler_partial(optimizer=optim_g)
-    discriminator_lr_scheduler = lr_scheduler_partial(optimizer=optim_d)
-
     bar = tqdm(
         desc="Training",
         disable=fabric.global_rank != 0,
@@ -119,13 +115,6 @@ def main(cfg: DictConfig):
     )
 
     while global_step < cfg.loop.max_steps:
-        # log learning rate
-        log_dict = {
-            "lr/generator": optim_g.param_groups[0]["lr"],
-            "lr/discriminator": optim_d.param_groups[0]["lr"],
-        }
-        fabric.log_dict(log_dict, step=global_step)
-
         model.train()
 
         for batch in train_dataloader:
@@ -145,6 +134,12 @@ def main(cfg: DictConfig):
                     fabric.log_dict(log_dict, step=global_step + idx)
 
             bar.set_description("Training")
+
+            # Set learning rate
+            for optim in [optim_g, optim_d]:
+                for group in optim.param_groups:
+                    group["lr"] = lr_scheduler(global_step)
+
             log_dict = training_step(
                 cfg=cfg,
                 fabric=fabric,
@@ -153,6 +148,12 @@ def main(cfg: DictConfig):
                 optim_g=optim_g,
                 optim_d=optim_d,
             )
+
+            # log learning rate
+            log_dict["lr/generator"] = optim_g.param_groups[0]["lr"]
+            log_dict["lr/discriminator"] = optim_d.param_groups[0]["lr"]
+
+            fabric.log_dict(log_dict, step=global_step)
 
             if global_step % cfg.loop.log_interval == 0:
                 fabric.log_dict(log_dict, step=global_step)
@@ -410,35 +411,7 @@ def discriminator_loss(disc_real_outputs, disc_generated_outputs):
 def kl_loss(mean, logvar, mask):
     # B, D, T -> B, 1, T
     losses = 0.5 * (mean**2 + torch.exp(logvar) - logvar - 1).sum(dim=1, keepdim=True)
-
     assert losses.shape == mask.shape
-
-    if torch.isinf(torch.masked_select(losses, mask.to(bool)).mean()):
-        print(
-            "max_mean",
-            torch.max(mean),
-            "min_mean",
-            torch.min(mean),
-            "max_logvar",
-            torch.max(logvar),
-            "min_logvar",
-            torch.min(logvar),
-            "max_mean**2",
-            torch.max(mean**2),
-            "min_mean**2",
-            torch.min(mean**2),
-            "max_exp_logvar",
-            torch.max(torch.exp(logvar)),
-            "min_exp_logvar",
-            torch.min(torch.exp(logvar)),
-            "max_loss",
-            torch.max(losses),
-            "min_loss",
-            torch.min(losses),
-            torch.masked_select(losses, mask.to(bool)).mean(),
-            sep="\n",
-            end="----------------\n",
-        )
 
     return torch.masked_select(losses, mask.to(bool)).mean()
 
