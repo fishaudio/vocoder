@@ -176,10 +176,6 @@ def main(cfg: DictConfig):
 
                 logger.info(f"Saved checkpoint at {save_path}")
 
-        # Update LR schedulers
-        generator_lr_scheduler.step()
-        discriminator_lr_scheduler.step()
-
 
 def training_step(
     cfg: DictConfig,
