@@ -1,7 +1,7 @@
 import torch
 
 
-def sequence_mask(lengths, max_length=None):
+def sequence_mask(lengths, max_length=None) -> torch.Tensor:
     if max_length is None:
         max_length = lengths.max()
 

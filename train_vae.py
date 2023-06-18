@@ -188,7 +188,7 @@ def training_step(
     log_dict = {}
 
     gt_y, lengths = batch["audio"], batch["lengths"]
-    y_mask = sequence_mask(lengths)[:, None, :].to(gt_y.device)
+    y_mask = sequence_mask(lengths)[:, None, :].to(gt_y.device, torch.float32)
 
     # Forward VAE
     with torch.no_grad():
@@ -278,7 +278,7 @@ def validation_step(
     log_dict = {}
 
     gt_y, lengths = batch["audio"], batch["lengths"]
-    y_mask = sequence_mask(lengths)[:, None, :].to(gt_y.device)
+    y_mask = sequence_mask(lengths)[:, None, :].to(gt_y.device, torch.float32)
 
     # Forward VAE
     gt_spec = model.spectrogram_transform(gt_y.squeeze(1))

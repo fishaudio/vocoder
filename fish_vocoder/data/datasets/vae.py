@@ -14,19 +14,14 @@ class VAEDataset(Dataset):
     def __init__(
         self,
         root: str | Path,
-        sampling_rate: int = 44100,
         transform: Optional[Callable[[Tensor], Tensor]] = None,
     ) -> None:
         super().__init__()
 
         assert Path(root).exists(), f"Path {root} does not exist."
-        assert (
-            sampling_rate > 0
-        ), f"Sampling rate must be positive, got {sampling_rate}."
         assert transform is not None, "transform must be provided."
 
         self.audio_paths = list_files(root, AUDIO_EXTENSIONS, recursive=True)
-        self.sampling_rate = sampling_rate
         self.transform = transform
 
     def __len__(self):
@@ -34,15 +29,6 @@ class VAEDataset(Dataset):
 
     def __getitem__(self, idx):
         audio = self.audio_paths[idx]
-
-        audio, sr = torchaudio.load(audio)
-        audio = AF.resample(audio, orig_freq=sr, new_freq=self.sampling_rate)
-
-        # If audio is not mono, convert it to mono
-        if audio.shape[0] > 1:
-            audio = audio.mean(dim=0, keepdim=True)
-
-        # You should do random crop and pitch augmentation here.
         audio = self.transform(audio)
 
         # Do normalization to avoid clipping
