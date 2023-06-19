@@ -10,7 +10,7 @@ seed: 594461
 base:
   sampling_rate: 48000
   num_mels: 128
-  hidden_size: 192
+  hidden_size: 1024
   n_fft: 2048
   hop_length: 480
   win_length: 2048
@@ -118,7 +118,17 @@ model:
       # The input is a linear spectrogram
       in_channels: "${eval: '${base.n_fft} // 2 + 1'}"
       out_channels: ${base.hidden_size}
-      hidden_channels: ${base.hidden_size}
+      hidden_channels: 384
+      dilation_rate: 2
+      dilation_cycle: 4
+      n_layers: 20
+
+    quantizer:
+      _target_: encodec.quantization.ResidualVectorQuantizer
+      dimension: ${base.hidden_size}
+      n_q: 24
+      bins: 1024
+      kmeans_init: false
 
     mpd:
       _target_: fish_vocoder.modules.discriminators.mpd.MultiPeriodDiscriminator

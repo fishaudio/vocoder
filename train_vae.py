@@ -6,6 +6,7 @@ import pyrootutils
 import torch
 import torch.nn.functional as F
 import torchmetrics
+from encodec.quantization.vq import QuantizedResult
 from hydra.utils import instantiate
 from lightning.fabric.loggers import TensorBoardLogger
 from natsort import natsorted
@@ -115,8 +116,6 @@ def main(cfg: DictConfig):
     )
 
     while global_step < cfg.loop.max_steps:
-        model.train()
-
         for batch in train_dataloader:
             # Validation
             if global_step % cfg.loop.val_interval == 0:
@@ -133,6 +132,7 @@ def main(cfg: DictConfig):
                     )
                     fabric.log_dict(log_dict, step=global_step + idx)
 
+            model.train()
             bar.set_description("Training")
 
             # Set learning rate
@@ -195,8 +195,11 @@ def training_step(
         gt_spec = model.spectrogram_transform(gt_y.squeeze(1))
 
     spec_lengths = lengths // cfg.base.hop_length
-    z, mean, logvar, z_mask = model.posterior_encoder(gt_spec, spec_lengths)
-    g_hat_y = model.generator(z)
+    z = model.posterior_encoder(gt_spec, spec_lengths)
+    qv: QuantizedResult = model.quantizer(
+        z, cfg.base.sampling_rate // cfg.base.hop_length, 24
+    )
+    g_hat_y = model.generator(qv.quantized)
 
     min_length = min(g_hat_y.shape[-1], gt_y.shape[-1])
     g_hat_y = g_hat_y[..., :min_length]
@@ -253,12 +256,12 @@ def training_step(
     loss_mrd = generator_adv_loss(y_g_hat_x)
     log_dict["train/loss_mrd"] = loss_mrd
 
-    # KL Loss
-    loss_kl = kl_loss(mean, logvar, z_mask)
-    log_dict["train/loss_kl"] = loss_kl
+    # QV Loss
+    loss_qv = qv.penalty
+    log_dict["train/loss_qv"] = loss_qv
 
     # All generator Loss
-    loss_g = loss_mel * 45 + loss_envelope + loss_mpd + loss_mrd + loss_kl
+    loss_g = loss_mel * 45 + loss_envelope + loss_mpd + loss_mrd + loss_qv
     log_dict["train/loss_g"] = loss_g
 
     fabric.backward(loss_g)
@@ -283,8 +286,15 @@ def validation_step(
     # Forward VAE
     gt_spec = model.spectrogram_transform(gt_y.squeeze(1))
     spec_lengths = lengths // cfg.base.hop_length
-    z, mean, logvar, z_mask = model.posterior_encoder(gt_spec, spec_lengths)
-    g_hat_y = model.generator(z)
+    z = model.posterior_encoder(gt_spec, spec_lengths)
+    qv: QuantizedResult = model.quantizer(
+        z, cfg.base.sampling_rate // cfg.base.hop_length, 24
+    )
+    g_hat_y = model.generator(qv.quantized)
+
+    # KL Loss
+    loss_qv = qv.penalty
+    log_dict["val/loss_qv"] = loss_qv
 
     min_length = min(g_hat_y.shape[-1], gt_y.shape[-1])
     g_hat_y = g_hat_y[..., :min_length]
@@ -302,10 +312,6 @@ def validation_step(
     # Mel Loss
     loss_mel = generator_mel_loss(gt_y, g_hat_y, model.multi_scale_mel_transforms)
     log_dict["val/loss_mel"] = loss_mel
-
-    # KL Loss
-    loss_kl = kl_loss(mean, logvar, z_mask)
-    log_dict["val/loss_kl"] = loss_kl
 
     # Log Audio and Mel Spectrograms
     tb_loggers = [

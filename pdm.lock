@@ -230,6 +230,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "einops"
+version = "0.6.1"
+requires_python = ">=3.7"
+summary = "A new flavour of deep learning operations"
+
+[[package]]
+name = "encodec"
+version = "0.1.1"
+requires_python = ">=3.8.0"
+summary = "High fidelity neural audio codec"
+dependencies = [
+    "einops",
+    "numpy",
+    "torch",
+    "torchaudio",
+]
+
+[[package]]
 name = "exceptiongroup"
 version = "1.1.1"
 requires_python = ">=3.7"
@@ -1301,7 +1319,7 @@ dependencies = [
 lock_version = "4.2"
 cross_platform = true
 groups = ["default", "dev"]
-content_hash = "sha256:7b33fe4c6beeeb1560a3ed6cf4cf8ffbf59a1a8b7b8d6f286204e3423434cba1"
+content_hash = "sha256:6964b6b3ce16c39e8276aba77538879a4931a705967bd1e08731325769d609ed"
 
 [metadata.files]
 "absl-py 1.4.0" = [
@@ -1712,6 +1730,13 @@ content_hash = "sha256:7b33fe4c6beeeb1560a3ed6cf4cf8ffbf59a1a8b7b8d6f286204e3423
 "docker-pycreds 0.4.0" = [
     {url = "https://files.pythonhosted.org/packages/c5/e6/d1f6c00b7221e2d7c4b470132c931325c8b22c51ca62417e300f5ce16009/docker-pycreds-0.4.0.tar.gz", hash = "sha256:6ce3270bcaf404cc4c3e27e4b6c70d3521deae82fb508767870fdbf772d584d4"},
     {url = "https://files.pythonhosted.org/packages/f5/e8/f6bd1eee09314e7e6dee49cbe2c5e22314ccdb38db16c9fc72d2fa80d054/docker_pycreds-0.4.0-py2.py3-none-any.whl", hash = "sha256:7266112468627868005106ec19cd0d722702d2b7d5912a28e19b826c3d37af49"},
+]
+"einops 0.6.1" = [
+    {url = "https://files.pythonhosted.org/packages/68/24/b05452c986e8eff11f47e123a40798ae693f2fa1ed2f9546094997d2f6be/einops-0.6.1-py3-none-any.whl", hash = "sha256:99149e46cc808956b174932fe563d920db4d6e5dadb8c6ecdaa7483b7ef7cfc3"},
+    {url = "https://files.pythonhosted.org/packages/ac/09/9d5fb513bda4845044802b389e0e1ecddb47b01a7934d33d3b406adf5073/einops-0.6.1.tar.gz", hash = "sha256:f95f8d00f4ded90dbc4b19b6f98b177332614b0357dde66997f3ae5d474dc8c8"},
+]
+"encodec 0.1.1" = [
+    {url = "https://files.pythonhosted.org/packages/62/59/e47bbd0542d0e6f4ce9983d5eb458a01d4b42c81e5c410cb9e159b1061ae/encodec-0.1.1.tar.gz", hash = "sha256:36dde98ccfe6c51a15576476cadfcb3b35a63507b8b8555abd69889a6fba6772"},
 ]
 "exceptiongroup 1.1.1" = [
     {url = "https://files.pythonhosted.org/packages/61/97/17ed81b7a8d24d8f69b62c0db37abbd8c0042d4b3fc429c73dab986e7483/exceptiongroup-1.1.1-py3-none-any.whl", hash = "sha256:232c37c63e4f682982c8b6459f33a8981039e5fb8756b2074364e5055c498c9e"},

@@ -24,6 +24,9 @@ class Pad(nn.Module):
     def forward(self, waveform: Tensor) -> Tensor:
         if self.multiple_of is not None:
             pad = self.multiple_of - (waveform.shape[-1] % self.multiple_of)
+
+            if pad == self.multiple_of:
+                return waveform
         else:
             pad = self.target_length - waveform.shape[-1]
 

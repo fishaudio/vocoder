@@ -14,6 +14,7 @@ class WaveNet(nn.Module):
         hidden_channels,
         kernel_size,
         dilation_rate,
+        dilation_cycle,
         n_layers,
         p_dropout=0,
     ):
@@ -31,7 +32,7 @@ class WaveNet(nn.Module):
         self.drop = nn.Dropout(p_dropout)
 
         for i in range(n_layers):
-            dilation = dilation_rate**i
+            dilation = dilation_rate ** (i % dilation_cycle)
             padding = int((kernel_size * dilation - dilation) / 2)
             in_layer = nn.Conv1d(
                 hidden_channels,
@@ -118,6 +119,7 @@ class PosteriorEncoder(nn.Module):
         hidden_channels,
         kernel_size=5,
         dilation_rate=1,
+        dilation_cycle=1,
         n_layers=16,
     ):
         super().__init__()
@@ -126,20 +128,18 @@ class PosteriorEncoder(nn.Module):
         self.hidden_channels = hidden_channels
         self.kernel_size = kernel_size
         self.dilation_rate = dilation_rate
+        self.dilation_cycle = dilation_cycle
         self.n_layers = n_layers
 
         self.pre = nn.Conv1d(in_channels, hidden_channels, 1)
         self.enc = WaveNet(
             hidden_channels,
-            kernel_size,
-            dilation_rate,
-            n_layers,
+            kernel_size=kernel_size,
+            dilation_rate=dilation_rate,
+            dilation_cycle=dilation_cycle,
+            n_layers=n_layers,
         )
-        self.proj = nn.Conv1d(hidden_channels, out_channels * 2, 1)
-
-        # self.mu_bn = nn.BatchNorm1d(out_channels, affine=True)
-        # self.mu_bn.weight.requires_grad = False
-        # self.mu_bn.weight.fill_(0.5)
+        self.proj = nn.Conv1d(hidden_channels, out_channels, 1)
 
     def forward(self, x, x_lengths=None):
         if x_lengths is not None:
@@ -152,15 +152,7 @@ class PosteriorEncoder(nn.Module):
         x = self.pre(x) * x_mask
         x = self.enc(x, x_mask)
 
-        stats = self.proj(x) * x_mask
-        mean, logvar = torch.split(stats, self.out_channels, dim=1)
-
-        logvar = torch.clamp(logvar, min=-30, max=20)
-        # mean = self.mu_bn(mean)
-
-        z = (mean + torch.randn_like(mean) * torch.exp(0.5 * logvar)) * x_mask
-
-        return z, mean, logvar, x_mask
+        return self.proj(x)
 
     def remove_weight_norm(self):
         self.enc.remove_weight_norm()
