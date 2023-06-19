@@ -153,8 +153,6 @@ def main(cfg: DictConfig):
             log_dict["lr/generator"] = optim_g.param_groups[0]["lr"]
             log_dict["lr/discriminator"] = optim_d.param_groups[0]["lr"]
 
-            fabric.log_dict(log_dict, step=global_step)
-
             if global_step % cfg.loop.log_interval == 0:
                 fabric.log_dict(log_dict, step=global_step)
 
