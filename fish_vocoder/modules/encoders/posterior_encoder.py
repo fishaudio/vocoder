@@ -121,8 +121,13 @@ class PosteriorEncoder(nn.Module):
         dilation_rate=1,
         dilation_cycle=1,
         n_layers=16,
+        mode="vqvae",
     ):
         super().__init__()
+
+        assert mode in ["vae", "bnvae", "vqvae"]
+
+        self.mode = mode
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.hidden_channels = hidden_channels
@@ -139,7 +144,14 @@ class PosteriorEncoder(nn.Module):
             dilation_cycle=dilation_cycle,
             n_layers=n_layers,
         )
-        self.proj = nn.Conv1d(hidden_channels, out_channels, 1)
+        self.proj = nn.Conv1d(
+            hidden_channels, out_channels * 2 if mode != "vqvae" else out_channels, 1
+        )
+
+        if mode == "bnvae":
+            self.mu_bn = nn.BatchNorm1d(out_channels, affine=True)
+            self.mu_bn.weight.requires_grad = False
+            self.mu_bn.weight.fill_(0.5)
 
     def forward(self, x, x_lengths=None):
         if x_lengths is not None:
@@ -151,8 +163,21 @@ class PosteriorEncoder(nn.Module):
 
         x = self.pre(x) * x_mask
         x = self.enc(x, x_mask)
+        x = self.proj(x) * x_mask
 
-        return self.proj(x)
+        if self.mode in ["bnvae", "vae"]:
+            mean, logvar = torch.split(x, self.out_channels, dim=1)
+            logvar = torch.clamp(logvar, min=-30, max=20)
+
+            if self.mode == "bnvae":
+                mean = self.mu_bn(mean)
+
+            z = (mean + torch.randn_like(mean) * torch.exp(0.5 * logvar)) * x_mask
+
+            return z, mean, logvar, x_mask
+
+        elif self.mode == "vqvae":
+            return x
 
     def remove_weight_norm(self):
         self.enc.remove_weight_norm()
