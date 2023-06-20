@@ -24,6 +24,7 @@ dependencies = [
     "torch-summary>=1.4.5",
     "matplotlib>=3.7.1",
     "encodec>=0.1.1",
+    "vocos>=0.0.2",
 ]
 
 [tool.pdm]

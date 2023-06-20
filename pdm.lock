@@ -353,6 +353,21 @@ requires_python = ">=3.7"
 summary = "A pure-Python, bring-your-own-I/O implementation of HTTP/1.1"
 
 [[package]]
+name = "huggingface-hub"
+version = "0.15.1"
+requires_python = ">=3.7.0"
+summary = "Client library to download and publish models, datasets and other repos on the huggingface.co hub"
+dependencies = [
+    "filelock",
+    "fsspec",
+    "packaging>=20.9",
+    "pyyaml>=5.1",
+    "requests",
+    "tqdm>=4.42.1",
+    "typing-extensions>=3.7.4.3",
+]
+
+[[package]]
 name = "hydra-colorlog"
 version = "1.2.0"
 summary = "Enables colorlog for Hydra apps"
@@ -1247,6 +1262,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "vocos"
+version = "0.0.2"
+summary = "Fourier-based neural vocoder for high-quality audio synthesis"
+dependencies = [
+    "einops",
+    "encodec==0.1.1",
+    "huggingface-hub",
+    "numpy",
+    "pyyaml",
+    "scipy",
+    "torch",
+    "torchaudio",
+]
+
+[[package]]
 name = "wandb"
 version = "0.15.4"
 requires_python = ">=3.6"
@@ -1319,7 +1349,7 @@ dependencies = [
 lock_version = "4.2"
 cross_platform = true
 groups = ["default", "dev"]
-content_hash = "sha256:6964b6b3ce16c39e8276aba77538879a4931a705967bd1e08731325769d609ed"
+content_hash = "sha256:1dc0ca1e036f0e10058fc6d4a48184219447c520ad2021e8cf58b8e59a1ca4c2"
 
 [metadata.files]
 "absl-py 1.4.0" = [
@@ -1932,6 +1962,10 @@ content_hash = "sha256:6964b6b3ce16c39e8276aba77538879a4931a705967bd1e0873132576
 "h11 0.14.0" = [
     {url = "https://files.pythonhosted.org/packages/95/04/ff642e65ad6b90db43e668d70ffb6736436c7ce41fcc549f4e9472234127/h11-0.14.0-py3-none-any.whl", hash = "sha256:e3fe4ac4b851c468cc8363d500db52c2ead036020723024a109d37346efaa761"},
     {url = "https://files.pythonhosted.org/packages/f5/38/3af3d3633a34a3316095b39c8e8fb4853a28a536e55d347bd8d8e9a14b03/h11-0.14.0.tar.gz", hash = "sha256:8f19fbbe99e72420ff35c00b27a34cb9937e902a8b810e2c88300c6f0a3b699d"},
+]
+"huggingface-hub 0.15.1" = [
+    {url = "https://files.pythonhosted.org/packages/62/a2/8a416d167216403ceeef3aaf8c22b0c61b1ae571644473d67eb7fecbb69e/huggingface_hub-0.15.1-py3-none-any.whl", hash = "sha256:05b0fb0abbf1f625dfee864648ac3049fe225ac4371c7bafaca0c2d3a2f83445"},
+    {url = "https://files.pythonhosted.org/packages/6a/18/42d8bb8a7a87e28f024d4c6ec380ad135836873679e60a641813d22407f7/huggingface_hub-0.15.1.tar.gz", hash = "sha256:a61b7d1a7769fe10119e730277c72ab99d95c48d86a3d6da3e9f3d0f632a4081"},
 ]
 "hydra-colorlog 1.2.0" = [
     {url = "https://files.pythonhosted.org/packages/2b/fc/ab5ca078d5184ae3280d5654734860198c643cd2caaaaaece63283d9f76d/hydra-colorlog-1.2.0.tar.gz", hash = "sha256:d44f85008fabd2448c7e3b496c31b44d7610560f6fff74f3673afaa949870899"},
@@ -3055,6 +3089,10 @@ content_hash = "sha256:6964b6b3ce16c39e8276aba77538879a4931a705967bd1e0873132576
 "uvicorn 0.22.0" = [
     {url = "https://files.pythonhosted.org/packages/ad/bd/d47ee02312640fcf26c7e1c807402d5c5eab468571153a94ec8f7ada0e46/uvicorn-0.22.0-py3-none-any.whl", hash = "sha256:e9434d3bbf05f310e762147f769c9f21235ee118ba2d2bf1155a7196448bd996"},
     {url = "https://files.pythonhosted.org/packages/c6/dd/0d3bab50ab4ef8bec849f89fec2adc2fabcc397018c30e57d9f0d4009c5e/uvicorn-0.22.0.tar.gz", hash = "sha256:79277ae03db57ce7d9aa0567830bbb51d7a612f54d6e1e3e92da3ef24c2c8ed8"},
+]
+"vocos 0.0.2" = [
+    {url = "https://files.pythonhosted.org/packages/56/6f/ddb0e463195e4eea68a8cf3997dd90c23ced6e7091df1af74d4294aa11e7/vocos-0.0.2-py3-none-any.whl", hash = "sha256:6af897243f83a4ab026ddc639a6d86c30de610acd864064f39b04be8cbc5b4e1"},
+    {url = "https://files.pythonhosted.org/packages/d4/ed/30b3e65addf909787d923f67d2ac1c0ddf1a71fca75dad4dea0bc6b10fef/vocos-0.0.2.tar.gz", hash = "sha256:b69d79a24ee0c16f06016446a4e90b6309dd2ee3fa35323f9526e40a625511ca"},
 ]
 "wandb 0.15.4" = [
     {url = "https://files.pythonhosted.org/packages/89/eb/a39c835871caca0173f526e321336a1a2b0961e38bf9b71b7213b651e3c8/wandb-0.15.4-py3-none-any.whl", hash = "sha256:9018565177e1be14d7d0dd470c583206031c6027c32a98c57fa3bb83955143d7"},
