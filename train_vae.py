@@ -401,8 +401,10 @@ def discriminator_loss(disc_real_outputs, disc_generated_outputs):
 # @torch.autocast("cuda", enabled=False)
 def kl_loss(mean, logvar, mask):
     # B, D, T -> B, 1, T
-    losses = 0.5 * (mean**2 + torch.exp(logvar) - logvar - 1).sum(dim=1, keepdim=True)
-    assert losses.shape == mask.shape
+    losses = 0.5 * (mean**2 + torch.exp(logvar) - logvar - 1)
+
+    # .sum(dim=1, keepdim=True)
+    # assert losses.shape == mask.shape
 
     return torch.masked_select(losses, mask.to(bool)).mean()
 

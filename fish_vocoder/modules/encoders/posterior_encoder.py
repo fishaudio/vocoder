@@ -88,29 +88,6 @@ class WaveNet(nn.Module):
             nn.utils.remove_weight_norm(l)
 
 
-class VAEBatchNorm1d(nn.Module):
-    # BN-VAE (Modified): https://kexue.fm/archives/7381/
-
-    def __init__(self, num_features, eps=1e-5, tau=0.5):
-        super().__init__()
-
-        self.bn = nn.BatchNorm1d(num_features, affine=False)
-
-        self.scale = nn.Parameter(torch.zeros(1, num_features, 1))
-        self.eps = eps
-        self.tau = tau
-
-    def forward(self, x, positive=True):
-        x = self.bn(x)
-
-        if positive:
-            scale = 1 - self.tau * torch.sigmoid(self.scale)
-        else:
-            scale = self.tau * torch.sigmoid(self.scale)
-
-        return x * torch.sqrt(scale)
-
-
 class PosteriorEncoder(nn.Module):
     def __init__(
         self,
