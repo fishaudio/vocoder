@@ -37,9 +37,10 @@ data:
           - _target_: fish_vocoder.data.transforms.hq_pitch_shift.RandomHQPitchShift
             probability: 1
             sampling_rate: ${base.sampling_rate}
-          - _target_: fish_vocoder.data.transforms.loudness.RandomLoudness
-            probability: 0.9
-            loudness_range: [0.1, 0.9]
+            pitch_range: 4
+          # - _target_: fish_vocoder.data.transforms.loudness.RandomLoudness
+          #   probability: 0.9
+          #   loudness_range: [0.1, 0.9]
           - _target_: fish_vocoder.data.transforms.crop.RandomCrop
             probability: 1
             crop_length: "${eval: '${base.hop_length} * 25'}"

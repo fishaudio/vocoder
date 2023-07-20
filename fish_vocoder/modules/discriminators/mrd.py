@@ -12,14 +12,12 @@ class DiscriminatorR(torch.nn.Module):
         hop_length: int = 120,
         win_length: int = 600,
         use_spectral_norm: bool = False,
-        leaky_relu_slope: float = 0.2,
     ):
         super(DiscriminatorR, self).__init__()
 
         self.n_fft = n_fft
         self.hop_length = hop_length
         self.win_length = win_length
-        self.leaky_relu_slope = leaky_relu_slope
 
         norm_f = weight_norm if use_spectral_norm == False else spectral_norm
 
@@ -42,7 +40,7 @@ class DiscriminatorR(torch.nn.Module):
 
         for l in self.convs:
             x = l(x)
-            x = F.leaky_relu(x, self.leaky_relu_slope, inplace=True)
+            x = F.silu(x, inplace=True)
             fmap.append(x)
 
         x = self.conv_post(x)

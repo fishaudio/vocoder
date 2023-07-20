@@ -149,7 +149,10 @@ class PosteriorEncoder(nn.Module):
             if self.mode == "bnvae":
                 mean = self.mu_bn(mean)
 
-            z = (mean + torch.randn_like(mean) * torch.exp(0.5 * logvar)) * x_mask
+            if self.training:
+                z = (mean + torch.randn_like(mean) * torch.exp(0.5 * logvar)) * x_mask
+            else:
+                z = mean * x_mask
 
             return z, mean, logvar, x_mask
 

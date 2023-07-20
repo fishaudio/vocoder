@@ -10,6 +10,7 @@ class LinearSpectrogram(nn.Module):
         win_length=2048,
         hop_length=512,
         center=False,
+        mode="pow2_sqrt",
     ):
         super().__init__()
 
@@ -17,6 +18,7 @@ class LinearSpectrogram(nn.Module):
         self.win_length = win_length
         self.hop_length = hop_length
         self.center = center
+        self.mode = mode
 
         self.register_buffer("window", torch.hann_window(win_length))
 
@@ -43,7 +45,9 @@ class LinearSpectrogram(nn.Module):
         )
 
         spec = torch.view_as_real(spec)
-        spec = torch.sqrt(spec.pow(2).sum(-1) + 1e-6)
+
+        if self.mode == "pow2_sqrt":
+            spec = torch.sqrt(spec.pow(2).sum(-1) + 1e-6)
 
         return spec
 

@@ -98,9 +98,9 @@ class ResBlock1(torch.nn.Module):
 
     def forward(self, x):
         for c1, c2 in zip(self.convs1, self.convs2):
-            xt = F.leaky_relu(x, LRELU_SLOPE)
+            xt = F.silu(x)
             xt = c1(xt)
-            xt = F.leaky_relu(xt, LRELU_SLOPE)
+            xt = F.silu(xt)
             xt = c2(xt)
             x = xt + x
         return x
@@ -121,7 +121,6 @@ class HiFiGANGenerator(nn.Module):
         upsample_kernel_sizes: tuple[int] = (16, 16, 8, 2, 2),
         resblock_kernel_sizes: tuple[int] = (3, 7, 11),
         resblock_dilation_sizes: tuple[tuple[int]] = ((1, 3, 5), (1, 3, 5), (1, 3, 5)),
-        leaky_relu_slope: float = 0.2,
         num_mels: int = 128,
         upsample_initial_channel: int = 512,
         use_template: bool = True,
@@ -135,7 +134,6 @@ class HiFiGANGenerator(nn.Module):
         self.conv_pre = weight_norm(
             nn.Conv1d(num_mels, upsample_initial_channel, 7, 1, padding=3)
         )
-        self.leaky_relu_slope = leaky_relu_slope
 
         self.num_upsamples = len(upsample_rates)
         self.num_kernels = len(resblock_kernel_sizes)
@@ -189,7 +187,7 @@ class HiFiGANGenerator(nn.Module):
         x = self.conv_pre(x)
 
         for i in range(self.num_upsamples):
-            x = F.leaky_relu(x, self.leaky_relu_slope, inplace=True)
+            x = F.silu(x, inplace=True)
             x = self.ups[i](x)
 
             if self.use_template:
@@ -203,7 +201,7 @@ class HiFiGANGenerator(nn.Module):
                     xs += self.resblocks[i * self.num_kernels + j](x)
             x = xs / self.num_kernels
 
-        x = F.leaky_relu(x, inplace=True)
+        x = F.silu(x, inplace=True)
         x = self.conv_post(x)
         x = torch.tanh(x)
 

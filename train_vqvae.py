@@ -17,9 +17,7 @@ from tqdm.rich import tqdm
 from fish_vocoder.utils.mask import sequence_mask
 
 # Allow TF32 on Ampere GPUs
-torch.backends.cuda.matmul.allow_tf32 = True
-torch.backends.cudnn.allow_tf32 = True
-torch.set_float32_matmul_precision("medium")
+torch.set_float32_matmul_precision("high")
 
 # register eval resolver and root
 pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
@@ -197,7 +195,27 @@ def training_step(
     qv: QuantizedResult = model.quantizer(
         z, cfg.base.sampling_rate // cfg.base.hop_length, 24
     )
-    g_hat_y = model.generator(qv.quantized)
+    quantized = qv.quantized
+
+    if cfg.base.decode_frames > 0:
+        decode_frames = cfg.base.decode_frames
+
+        # Only pick 32 frames to decode [16, 1024, 128] -> [16, 1024, 32]
+        frame_idx = torch.randint(0, quantized.shape[-1] - decode_frames, (1,))
+        quantized = quantized[..., frame_idx : frame_idx + decode_frames]
+        gt_y = gt_y[
+            ...,
+            frame_idx
+            * cfg.base.hop_length : (frame_idx + decode_frames)
+            * cfg.base.hop_length,
+        ]
+        y_mask = y_mask[
+            ...,
+            frame_idx
+            * cfg.base.hop_length : (frame_idx + decode_frames)
+            * cfg.base.hop_length,
+        ]
+        g_hat_y = model.generator(quantized)
 
     min_length = min(g_hat_y.shape[-1], gt_y.shape[-1])
     g_hat_y = g_hat_y[..., :min_length]
@@ -216,16 +234,22 @@ def training_step(
     optim_d.zero_grad()
 
     # MPD Loss
-    y_g_hat_x, _ = model.mpd(g_hat_y.detach())
-    y_x, _ = model.mpd(gt_y)
+    y_g_hat_x, y_hat_mpd_fmap = model.mpd(g_hat_y.detach())
+    y_x, y_mpd_fmap = model.mpd(gt_y)
     loss_mpd = discriminator_loss(y_x, y_g_hat_x)
     log_dict["train/loss_mpd"] = loss_mpd
 
+    loss_mpd_fm = feature_matching_loss(y_mpd_fmap, y_hat_mpd_fmap)
+    log_dict["train/loss_mpd_fm"] = loss_mpd_fm
+
     # MRD Loss
-    y_g_hat_x, _ = model.mrd(g_hat_y.detach())
-    y_x, _ = model.mrd(gt_y)
+    y_g_hat_x, y_hat_mrd_fmap = model.mrd(g_hat_y.detach())
+    y_x, ymrd_fmap = model.mrd(gt_y)
     loss_mrd = discriminator_loss(y_x, y_g_hat_x)
     log_dict["train/loss_mrd"] = loss_mrd
+
+    loss_mrd_fm = feature_matching_loss(ymrd_fmap, y_hat_mrd_fmap)
+    log_dict["train/loss_mrd_fm"] = loss_mrd_fm
 
     loss_d = loss_mpd + loss_mrd
     log_dict["train/loss_d"] = loss_d
@@ -239,10 +263,6 @@ def training_step(
     # L1 Mel Loss
     loss_mel = generator_mel_loss(gt_y, g_hat_y, model.multi_scale_mel_transforms)
     log_dict["train/loss_mel"] = loss_mel
-
-    # L1 Envelope Loss
-    loss_envelope = generator_envelope_loss(gt_y, g_hat_y)
-    log_dict["train/loss_envelope"] = loss_envelope
 
     # MPD Loss
     y_g_hat_x, _ = model.mpd(g_hat_y)
@@ -259,7 +279,7 @@ def training_step(
     log_dict["train/loss_qv"] = loss_qv
 
     # All generator Loss
-    loss_g = loss_mel * 45 + loss_envelope + loss_mpd + loss_mrd + loss_qv
+    loss_g = loss_mel * 45 + loss_mpd + loss_mrd + loss_qv
     log_dict["train/loss_g"] = loss_g
 
     fabric.backward(loss_g)
@@ -365,24 +385,6 @@ def generator_mel_loss(y, y_hat, multi_scale_mel_transforms):
     return sum(loss_mel) / len(loss_mel)
 
 
-def generator_envelope_loss(y, y_hat):
-    def extract_envelope(signal, kernel_size=512, stride=256):
-        envelope = F.max_pool1d(signal, kernel_size=kernel_size, stride=stride)
-        return envelope
-
-    y_envelope = extract_envelope(y)
-    y_hat_envelope = extract_envelope(y_hat)
-
-    y_reverse_envelope = extract_envelope(-y)
-    y_hat_reverse_envelope = extract_envelope(-y_hat)
-
-    loss_envelope = F.l1_loss(y_envelope, y_hat_envelope) + F.l1_loss(
-        y_reverse_envelope, y_hat_reverse_envelope
-    )
-
-    return loss_envelope
-
-
 def generator_adv_loss(disc_outputs):
     losses = []
 
@@ -404,13 +406,14 @@ def discriminator_loss(disc_real_outputs, disc_generated_outputs):
     return sum(losses) / len(losses)
 
 
-# @torch.autocast("cuda", enabled=False)
-def kl_loss(mean, logvar, mask):
-    # B, D, T -> B, 1, T
-    losses = 0.5 * (mean**2 + torch.exp(logvar) - logvar - 1).sum(dim=1, keepdim=True)
-    assert losses.shape == mask.shape
+def feature_matching_loss(disc_real_outputs, disc_generated_outputs):
+    losses = []
 
-    return torch.masked_select(losses, mask.to(bool)).mean()
+    for dr, dg in zip(disc_real_outputs, disc_generated_outputs):
+        for rl, gl in zip(dr, dg):
+            losses.append(F.l1_loss(rl, gl))
+
+    return sum(losses) / len(losses)
 
 
 if __name__ == "__main__":

@@ -7,8 +7,8 @@ devices: auto
 num_nodes: 1
 strategy: ddp
 
-# mixed precision for extra speed-up
-precision: "16-mixed"
+# fp32 will be automatically cast into tf32 on compatible GPUs
+precision: "32"
 
 loggers:
   - _target_: lightning.fabric.loggers.TensorBoardLogger

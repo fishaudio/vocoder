@@ -14,13 +14,11 @@ class DiscriminatorP(nn.Module):
         kernel_size: int = 5,
         stride: int = 3,
         use_spectral_norm: bool = False,
-        leaky_relu_slope: float = 0.2,
         channels: Optional[list[int]] = None,
     ) -> None:
         super(DiscriminatorP, self).__init__()
 
         self.period = period
-        self.leaky_relu_slope = leaky_relu_slope
         norm_f = weight_norm if use_spectral_norm == False else spectral_norm
 
         if channels is None:
@@ -55,7 +53,7 @@ class DiscriminatorP(nn.Module):
 
         for l in self.convs:
             x = l(x)
-            x = F.leaky_relu(x, self.leaky_relu_slope, inplace=True)
+            x = F.silu(x, inplace=True)
             fmap.append(x)
 
         x = self.conv_post(x)
