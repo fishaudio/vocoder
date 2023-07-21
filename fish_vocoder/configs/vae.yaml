@@ -147,11 +147,11 @@ lr_scheduler:
   _target_: fish_vocoder.schedulers.warmup_cosine.LambdaWarmUpCosineScheduler
   val_base: 2e-4
   val_final: 1e-5
-  max_decay_steps: 1000000
+  max_decay_steps: ${loop.max_steps}
   warm_up_steps: 10000
 
 loop:
   log_interval: 50
   val_interval: 5000
   save_interval: 5000
-  max_steps: 1000000
+  max_steps: 2000000
