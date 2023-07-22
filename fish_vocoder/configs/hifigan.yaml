@@ -4,14 +4,15 @@ defaults:
   - paths: default
   - trainer: default
 
-task_name: refine
+task_name: hifigan
 seed: 594461
 
 base:
-  sampling_rate: 44100
+  sampling_rate: 48000
   num_mels: 128
+  hidden_size: 1024
   n_fft: 2048
-  hop_length: 512
+  hop_length: 480
   win_length: 2048
 
 data:
@@ -21,45 +22,49 @@ data:
   num_workers: 2
 
   collate_fn:
-    _target_: fish_vocoder.data.datasets.refine.collate_fn
+    _target_: fish_vocoder.data.datasets.vae.collate_fn
     _partial_: true
 
   datasets:
     train:
-      _target_: fish_vocoder.data.datasets.refine.AudioRefineDataset
-      root: dataset/train
-      base_transform:
+      _target_: fish_vocoder.data.datasets.vae.VAEDataset
+      root: dataset/hifi-8000h
+      transform:
         _target_: torch.nn.Sequential
         _args_:
+          - _target_: fish_vocoder.data.transforms.load.LoadAudio
+            sampling_rate: ${base.sampling_rate}
           - _target_: fish_vocoder.data.transforms.hq_pitch_shift.RandomHQPitchShift
             probability: 1
             sampling_rate: ${base.sampling_rate}
-          - _target_: fish_vocoder.data.transforms.crop.RandomCrop
-            probability: 1
-            crop_length: "${eval: '${base.hop_length} * 50'}"
-      augment_transform:
-        _target_: fish_vocoder.data.transforms.discontinuous.RandomDiscontinuous
-        probability: 1
-        sampling_rate: ${base.sampling_rate}
-
-    val:
-      _target_: fish_vocoder.data.datasets.refine.AudioRefineDataset
-      root: dataset/valid
-      base_transform:
-        _target_: torch.nn.Sequential
-        _args_:
+            pitch_range: 4
+          - _target_: fish_vocoder.data.transforms.loudness.RandomLoudness
+            probability: 0.9
+            loudness_range: [0.1, 0.9]
           - _target_: fish_vocoder.data.transforms.crop.RandomCrop
             probability: 1
             crop_length: "${eval: '${base.hop_length} * 1000'}"
-      augment_transform:
-        _target_: fish_vocoder.data.transforms.discontinuous.RandomDiscontinuous
-        probability: 1
-        sampling_rate: ${base.sampling_rate}
+          - _target_: fish_vocoder.data.transforms.pad.Pad
+            multiple_of: ${base.hop_length}
+
+    val:
+      _target_: fish_vocoder.data.datasets.vae.VAEDataset
+      root: dataset/valid
+      transform:
+        _target_: torch.nn.Sequential
+        _args_:
+          - _target_: fish_vocoder.data.transforms.load.LoadAudio
+            sampling_rate: ${base.sampling_rate}
+          - _target_: fish_vocoder.data.transforms.crop.RandomCrop
+            probability: 1
+            crop_length: "${eval: '${base.hop_length} * 1000'}"
+          - _target_: fish_vocoder.data.transforms.pad.Pad
+            multiple_of: ${base.hop_length}
 
 model:
   _target_: torch.nn.ModuleDict
   modules:
-    source_mel_transform:
+    viz_mel_transform:
       _target_: fish_vocoder.data.transforms.spectrogram.LogMelSpectrogram
       n_fft: ${base.n_fft}
       hop_length: ${base.hop_length}
@@ -91,26 +96,21 @@ model:
           sample_rate: ${base.sampling_rate}
           n_mels: ${base.num_mels}
 
-    # generator:
-    #   _target_: fish_vocoder.modules.generators.refinegan.RefineGANGenerator
-    #   sampling_rate: ${base.sampling_rate}
-    #   hop_length: ${base.hop_length}
-    #   downsample_rates: [2, 2, 2, 8, 8]
-    #   upsample_rates: [8, 8, 2, 2, 2]
-    #   leaky_relu_slope: 0.2
-    #   num_mels: ${base.num_mels}
-    #   start_channels: 16
-
     generator:
       _target_: fish_vocoder.modules.generators.hifigan.HiFiGANGenerator
       hop_length: ${base.hop_length}
-      upsample_rates: [8, 8, 2, 2, 2]
-      upsample_kernel_sizes: [16, 16, 8, 2, 2]
+      upsample_rates: [10, 6, 2, 2, 2]
+      upsample_kernel_sizes: [16, 16, 4, 4, 4]
       resblock_kernel_sizes: [3, 7, 11]
       resblock_dilation_sizes: [[1, 3, 5], [1, 3, 5], [1, 3, 5]]
-      leaky_relu_slope: 0.2
-      num_mels: ${base.num_mels}
+      num_mels: ${base.hidden_size}
       upsample_initial_channel: 512
+      use_template: false
+
+    encoder:
+      _target_: fish_vocoder.modules.encoders.mms.MMSEncoder
+      sampling_rate: ${base.sampling_rate}
+      hop_length: ${base.hop_length}
 
     mpd:
       _target_: fish_vocoder.modules.discriminators.mpd.MultiPeriodDiscriminator
@@ -131,12 +131,14 @@ optimizer:
   eps: 1e-6
 
 lr_scheduler:
-  _target_: torch.optim.lr_scheduler.ExponentialLR
-  _partial_: true
-  gamma: 0.999
+  _target_: fish_vocoder.schedulers.warmup_cosine.LambdaWarmUpCosineScheduler
+  val_base: 2e-4
+  val_final: 1e-5
+  max_decay_steps: ${loop.max_steps}
+  warm_up_steps: 10000
 
 loop:
   log_interval: 50
   val_interval: 5000
   save_interval: 5000
-  max_steps: 1000000
+  max_steps: 2000000
