@@ -43,7 +43,7 @@ data:
             loudness_range: [0.1, 0.9]
           - _target_: fish_vocoder.data.transforms.crop.RandomCrop
             probability: 1
-            crop_length: "${eval: '${base.hop_length} * 1000'}"
+            crop_length: "${eval: '${base.hop_length} * 500'}"
           - _target_: fish_vocoder.data.transforms.pad.Pad
             multiple_of: ${base.hop_length}
 
