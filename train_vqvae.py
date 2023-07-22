@@ -234,22 +234,16 @@ def training_step(
     optim_d.zero_grad()
 
     # MPD Loss
-    y_g_hat_x, y_hat_mpd_fmap = model.mpd(g_hat_y.detach())
-    y_x, y_mpd_fmap = model.mpd(gt_y)
+    y_g_hat_x, _ = model.mpd(g_hat_y.detach())
+    y_x, _ = model.mpd(gt_y)
     loss_mpd = discriminator_loss(y_x, y_g_hat_x)
-    log_dict["train/loss_mpd"] = loss_mpd
-
-    loss_mpd_fm = feature_matching_loss(y_mpd_fmap, y_hat_mpd_fmap)
-    log_dict["train/loss_mpd_fm"] = loss_mpd_fm
+    log_dict["train/loss_mpd_d"] = loss_mpd
 
     # MRD Loss
-    y_g_hat_x, y_hat_mrd_fmap = model.mrd(g_hat_y.detach())
-    y_x, ymrd_fmap = model.mrd(gt_y)
+    y_g_hat_x, _ = model.mrd(g_hat_y.detach())
+    y_x, _ = model.mrd(gt_y)
     loss_mrd = discriminator_loss(y_x, y_g_hat_x)
-    log_dict["train/loss_mrd"] = loss_mrd
-
-    loss_mrd_fm = feature_matching_loss(ymrd_fmap, y_hat_mrd_fmap)
-    log_dict["train/loss_mrd_fm"] = loss_mrd_fm
+    log_dict["train/loss_mrd_d"] = loss_mrd
 
     loss_d = loss_mpd + loss_mrd
     log_dict["train/loss_d"] = loss_d
@@ -265,21 +259,29 @@ def training_step(
     log_dict["train/loss_mel"] = loss_mel
 
     # MPD Loss
-    y_g_hat_x, _ = model.mpd(g_hat_y)
+    y_g_hat_x, y_hat_mpd_fmap = model.mpd(g_hat_y)
+    _, y_mpd_fmap = model.mpd(gt_y)
     loss_mpd = generator_adv_loss(y_g_hat_x)
-    log_dict["train/loss_mpd"] = loss_mpd
+    log_dict["train/loss_mpd_g"] = loss_mpd
+
+    loss_mpd_fm = feature_matching_loss(y_mpd_fmap, y_hat_mpd_fmap)
+    log_dict["train/loss_mpd_fm"] = loss_mpd_fm
 
     # MRD Loss
-    y_g_hat_x, _ = model.mrd(g_hat_y)
+    y_g_hat_x, y_hat_mrd_fmap = model.mrd(g_hat_y)
+    _, y_mrd_fmap = model.mrd(gt_y)
     loss_mrd = generator_adv_loss(y_g_hat_x)
-    log_dict["train/loss_mrd"] = loss_mrd
+    log_dict["train/loss_mrd_g"] = loss_mrd
+
+    loss_mrd_fm = feature_matching_loss(y_mrd_fmap, y_hat_mrd_fmap)
+    log_dict["train/loss_mrd_fm"] = loss_mrd_fm
 
     # QV Loss
     loss_qv = qv.penalty
     log_dict["train/loss_qv"] = loss_qv
 
     # All generator Loss
-    loss_g = loss_mel * 45 + loss_mpd + loss_mrd + loss_qv
+    loss_g = loss_mel * 45 + loss_mpd + loss_mrd + loss_mpd_fm + loss_mrd_fm + loss_qv
     log_dict["train/loss_g"] = loss_g
 
     fabric.backward(loss_g)

@@ -22,11 +22,4 @@ WORKDIR /root/exp
 COPY pyproject.toml .
 RUN pip3 install .
 
-# Install code server and zsh
-RUN wget -c https://github.com/coder/code-server/releases/download/v4.5.1/code-server_4.5.1_amd64.deb && \
-    dpkg -i ./code-server_4.5.1_amd64.deb && \
-    code-server --install-extension ms-python.python && \
-    rm ./code-server_4.5.1_amd64.deb && \
-    sh -c "$(curl https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)" "" --unattended
-
 CMD ["code-server", "--auth", "password", "--bind-addr", "0.0.0.0:8888", "/root/exp"]

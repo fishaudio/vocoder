@@ -17,9 +17,7 @@ from tqdm.rich import tqdm
 from fish_vocoder.utils.mask import sequence_mask
 
 # Allow TF32 on Ampere GPUs
-torch.backends.cuda.matmul.allow_tf32 = True
-torch.backends.cudnn.allow_tf32 = True
-torch.set_float32_matmul_precision("medium")
+torch.set_float32_matmul_precision("high")
 
 # register eval resolver and root
 pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
