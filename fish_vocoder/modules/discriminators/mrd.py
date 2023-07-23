@@ -19,7 +19,7 @@ class DiscriminatorR(torch.nn.Module):
         self.hop_length = hop_length
         self.win_length = win_length
 
-        norm_f = weight_norm if use_spectral_norm == False else spectral_norm
+        norm_f = weight_norm if use_spectral_norm is False else spectral_norm
 
         self.convs = nn.ModuleList(
             [
@@ -38,8 +38,8 @@ class DiscriminatorR(torch.nn.Module):
         x = self.spectrogram(x)
         x = x.unsqueeze(1)
 
-        for l in self.convs:
-            x = l(x)
+        for conv in self.convs:
+            x = conv(x)
             x = F.silu(x, inplace=True)
             fmap.append(x)
 

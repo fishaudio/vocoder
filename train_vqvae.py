@@ -23,8 +23,8 @@ torch.set_float32_matmul_precision("high")
 pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 OmegaConf.register_new_resolver("eval", eval)
 
-from fish_vocoder.utils.logger import logger
-from fish_vocoder.utils.viz import plot_mel
+from fish_vocoder.utils.logger import logger  # noqa: E402
+from fish_vocoder.utils.viz import plot_mel  # noqa: E402
 
 
 @hydra.main(config_path="fish_vocoder/configs", version_base="1.3", config_name="vqvae")
@@ -391,8 +391,7 @@ def generator_adv_loss(disc_outputs):
     losses = []
 
     for dg in disc_outputs:
-        l = torch.mean((1 - dg) ** 2)
-        losses.append(l)
+        losses.append(torch.mean((1 - dg) ** 2))
 
     return sum(losses) / len(losses)
 

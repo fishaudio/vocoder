@@ -25,7 +25,7 @@ class LambdaWarmUpCosineScheduler:
             max_decay_steps (int): number of steps to decay from val_base to val_final (after warmup)
             val_start (float, optional): learning rate at the start of the schedule. Defaults to 0.
             warm_up_steps (int, optional): number of steps for the warmup phase. Defaults to 0.
-        """
+        """  # noqa: E501
 
         self.val_final = val_final
         self.val_base = val_base

@@ -34,9 +34,10 @@ includes = ["fish_vocoder"]
 
 [tool.pdm.dev-dependencies]
 dev = [
-    "isort>=5.12.0",
     "black>=22.12.0",
     "pytest>=7.3.1",
+    "pre-commit>=3.3.3",
+    "ruff>=0.0.280",
 ]
 
 [build-system]
@@ -44,7 +45,8 @@ requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
 [tool.pdm.scripts]
-lint = { shell = "black . && isort ." }
+lint = { shell = "black . && ruff check --fix ." }
+check = { shell = "black --check . && ruff check ." }
 test = { shell = "PYTHONPATH=. pytest -n=auto -q tests" }
 
 [[tool.pdm.source]]
@@ -56,3 +58,15 @@ verify_ssl = true
 [tool.isort]
 profile = "black"
 extend_skip = ["dataset", "logs"]
+
+[tool.ruff]
+line-length = 88
+select = [
+    # Pyflakes
+    "F",
+    # Pycodestyle
+    "E",
+    "W",
+    # isort
+    "I001"
+]

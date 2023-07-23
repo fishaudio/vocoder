@@ -4,8 +4,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn import AvgPool1d, Conv1d, Conv2d, ConvTranspose1d
-from torch.nn.utils import remove_weight_norm, spectral_norm, weight_norm
+from torch.nn import Conv1d
+from torch.nn.utils import remove_weight_norm, weight_norm
 
 LRELU_SLOPE = 0.1
 
@@ -106,10 +106,10 @@ class ResBlock1(torch.nn.Module):
         return x
 
     def remove_weight_norm(self):
-        for l in self.convs1:
-            remove_weight_norm(l)
-        for l in self.convs2:
-            remove_weight_norm(l)
+        for conv in self.convs1:
+            remove_weight_norm(conv)
+        for conv in self.convs2:
+            remove_weight_norm(conv)
 
 
 class HiFiGANGenerator(nn.Module):
@@ -209,9 +209,9 @@ class HiFiGANGenerator(nn.Module):
 
     def remove_weight_norm(self):
         print("Removing weight norm...")
-        for l in self.ups:
-            remove_weight_norm(l)
-        for l in self.resblocks:
-            l.remove_weight_norm()
+        for up in self.ups:
+            remove_weight_norm(up)
+        for block in self.resblocks:
+            block.remove_weight_norm()
         remove_weight_norm(self.conv_pre)
         remove_weight_norm(self.conv_post)

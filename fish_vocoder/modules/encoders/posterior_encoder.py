@@ -82,10 +82,10 @@ class WaveNet(nn.Module):
     def remove_weight_norm(self):
         if self.gin_channels != 0:
             nn.utils.remove_weight_norm(self.cond_layer)
-        for l in self.in_layers:
-            nn.utils.remove_weight_norm(l)
-        for l in self.res_skip_layers:
-            nn.utils.remove_weight_norm(l)
+        for layer in self.in_layers:
+            nn.utils.remove_weight_norm(layer)
+        for layer in self.res_skip_layers:
+            nn.utils.remove_weight_norm(layer)
 
 
 class PosteriorEncoder(nn.Module):

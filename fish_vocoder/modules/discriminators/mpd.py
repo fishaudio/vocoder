@@ -19,7 +19,7 @@ class DiscriminatorP(nn.Module):
         super(DiscriminatorP, self).__init__()
 
         self.period = period
-        norm_f = weight_norm if use_spectral_norm == False else spectral_norm
+        norm_f = weight_norm if use_spectral_norm is False else spectral_norm
 
         if channels is None:
             channels = [1, 64, 128, 256, 512, 1024]
@@ -51,8 +51,8 @@ class DiscriminatorP(nn.Module):
             t = t + n_pad
         x = x.view(b, c, t // self.period, self.period)
 
-        for l in self.convs:
-            x = l(x)
+        for conv in self.convs:
+            x = conv(x)
             x = F.silu(x, inplace=True)
             fmap.append(x)
 

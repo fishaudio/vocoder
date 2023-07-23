@@ -2,8 +2,6 @@ from pathlib import Path
 from typing import Callable, Optional
 
 import torch
-import torchaudio
-import torchaudio.functional as AF
 from torch import Tensor
 from torch.utils.data import Dataset
 
