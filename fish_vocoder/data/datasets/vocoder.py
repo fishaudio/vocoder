@@ -8,7 +8,7 @@ from torch.utils.data import Dataset
 from fish_vocoder.utils.file import AUDIO_EXTENSIONS, list_files
 
 
-class VAEDataset(Dataset):
+class VocoderDataset(Dataset):
     def __init__(
         self,
         root: str | Path,
@@ -19,7 +19,13 @@ class VAEDataset(Dataset):
         assert Path(root).exists(), f"Path {root} does not exist."
         assert transform is not None, "transform must be provided."
 
-        self.audio_paths = list_files(root, AUDIO_EXTENSIONS, recursive=True)
+        root = Path(root)
+
+        if root.is_dir():
+            self.audio_paths = list_files(root, AUDIO_EXTENSIONS, recursive=True)
+        else:
+            self.audio_paths = root.read_text().splitlines()
+
         self.transform = transform
 
     def __len__(self):
