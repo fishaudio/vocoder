@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from fish_vocoder.models.vocoder import VocoderModel
+from fish_vocoder.modules.losses.stft import MultiResolutionSTFTLoss
 from fish_vocoder.utils.mask import sequence_mask
 
 
@@ -21,6 +22,7 @@ class HiFiGANModel(VocoderModel):
         mel_transforms: nn.ModuleDict,
         generator: nn.Module,
         discriminators: nn.ModuleDict,
+        multi_resolution_stft_loss: MultiResolutionSTFTLoss,
     ):
         super().__init__(
             sampling_rate=sampling_rate,
@@ -40,6 +42,9 @@ class HiFiGANModel(VocoderModel):
         # Generator and discriminators
         self.generator = generator
         self.discriminators = discriminators
+
+        # Loss
+        self.multi_resolution_stft_loss = multi_resolution_stft_loss
 
         # Disable automatic optimization
         self.automatic_optimization = False
@@ -68,26 +73,90 @@ class HiFiGANModel(VocoderModel):
     def training_step(self, batch, batch_idx):
         optim_g, optim_d = self.optimizers()
 
-        y, lengths = batch["audio"], batch["lengths"]
-        y_mask = sequence_mask(lengths)[:, None, :].to(y.device, torch.float32)
-        input_mels = self.mel_transforms.input(y.squeeze(1))
-        y_g_hat = self.generator(input_mels)
+        audio, lengths = batch["audio"], batch["lengths"]
+        audio_mask = sequence_mask(lengths)[:, None, :].to(audio.device, torch.float32)
 
-        assert y_g_hat.shape == y.shape
+        # Generator
+        optim_g.zero_grad()
+        input_mels = self.mel_transforms.input(audio.squeeze(1))
+        fake_audio = self.generator(input_mels)
+
+        assert fake_audio.shape == audio.shape
 
         # Apply mask
-        y = y * y_mask
-        y_g_hat = y_g_hat * y_mask
+        audio = audio * audio_mask
+        fake_audio = fake_audio * audio_mask
 
-        # Discriminator
-        loss_disc_all = 0
-        for key, disc in self.discriminators.items():
-            y_hat_r, _ = disc(y)
-            y_hat_g, _ = disc(y_g_hat.detach())
-            loss_disc, _, _ = self.discriminator_loss(y_hat_r, y_hat_g)
+        # Multi-Resolution STFT Loss
+        sc_loss, mag_loss = self.multi_resolution_stft_loss(
+            fake_audio.squeeze(1), audio.squeeze(1)
+        )
+        loss_stft = sc_loss + mag_loss
+
+        self.log(
+            "train/generator/stft",
+            loss_stft,
+            on_step=True,
+            on_epoch=False,
+            prog_bar=True,
+            logger=True,
+            sync_dist=True,
+        )
+
+        # L1 Mel-Spectrogram Loss
+        # This is not used in backpropagation currently
+        with torch.no_grad():
+            audio_mel = self.mel_transforms.loss(audio.squeeze(1))
+            fake_audio_mel = self.mel_transforms.loss(fake_audio.squeeze(1))
+            loss_mel = F.l1_loss(audio_mel, fake_audio_mel)
 
             self.log(
-                f"train/losses/disc_{key}",
+                "train/generator/mel",
+                loss_mel,
+                on_step=True,
+                on_epoch=False,
+                prog_bar=True,
+                logger=True,
+                sync_dist=True,
+            )
+
+        # Adv Loss
+        loss_adv_all = 0
+
+        for key, disc in self.discriminators.items():
+            score_fake, _ = disc(fake_audio)
+            loss_fake = torch.mean((1 - score_fake) ** 2)
+
+            self.log(
+                f"train/generator/adv_{key}",
+                loss_fake,
+                on_step=True,
+                on_epoch=False,
+                prog_bar=False,
+                logger=True,
+                sync_dist=True,
+            )
+
+            loss_adv_all += loss_fake
+
+        loss_adv_all /= len(self.discriminators)
+        loss_gen_all = loss_stft * 2.5 + loss_adv_all
+
+        self.manual_backward(loss_gen_all)
+        optim_g.step()
+
+        # Discriminator
+        optim_d.zero_grad()
+
+        loss_disc_all = 0
+        for key, disc in self.discriminators.items():
+            score, _ = disc(audio)
+            score_fake, _ = disc(fake_audio.detach())
+
+            loss_disc = torch.mean((score - 1) ** 2) + torch.mean((score_fake) ** 2)
+
+            self.log(
+                f"train/discriminator/{key}",
                 loss_disc,
                 on_step=True,
                 on_epoch=False,
@@ -98,77 +167,14 @@ class HiFiGANModel(VocoderModel):
 
             loss_disc_all += loss_disc
 
+        loss_disc_all /= len(self.discriminators)
+
         self.manual_backward(loss_disc_all)
         optim_d.step()
 
         self.log(
-            "train/losses/disc",
+            "train/discriminator/all",
             loss_disc_all,
-            on_step=True,
-            on_epoch=False,
-            prog_bar=True,
-            logger=True,
-            sync_dist=True,
-        )
-
-        # Generator
-        optim_g.zero_grad()
-
-        # L1 Mel-Spectrogram Loss
-        y_mel = self.mel_transforms.loss(y.squeeze(1))
-        y_g_hat_mel = self.mel_transforms.loss(y_g_hat.squeeze(1))
-        loss_mel = F.l1_loss(y_mel, y_g_hat_mel)
-
-        self.log(
-            "train/losses/mel",
-            loss_mel,
-            on_step=True,
-            on_epoch=False,
-            prog_bar=True,
-            logger=True,
-            sync_dist=True,
-        )
-
-        # Adv Loss
-        loss_adv_all = 0
-
-        for key, disc in self.discriminators.items():
-            _, fmap_r = disc(y)
-            y_d_hat_g, fmap_g = disc(y_g_hat)
-
-            loss_fm = self.feature_matching_loss(fmap_r, fmap_g)
-            loss_gen, _ = self.generator_loss(y_d_hat_g)
-
-            self.log(
-                f"train/losses/gen_{key}",
-                loss_gen,
-                on_step=True,
-                on_epoch=False,
-                prog_bar=False,
-                logger=True,
-                sync_dist=True,
-            )
-
-            self.log(
-                f"train/losses/fm_{key}",
-                loss_fm,
-                on_step=True,
-                on_epoch=False,
-                prog_bar=False,
-                logger=True,
-                sync_dist=True,
-            )
-
-            loss_adv_all += loss_gen + loss_fm
-
-        loss_gen_all = loss_mel * 45 + loss_adv_all
-
-        self.manual_backward(loss_gen_all)
-        optim_g.step()
-
-        self.log(
-            "train/losses/gen",
-            loss_gen_all,
             on_step=True,
             on_epoch=False,
             prog_bar=True,
@@ -178,13 +184,8 @@ class HiFiGANModel(VocoderModel):
 
         # Manual LR Scheduler
         scheduler_g, scheduler_d = self.lr_schedulers()
-
-        if self.trainer.is_last_batch:
-            scheduler_g.step()
-            scheduler_d.step()
-
-        # Report other metrics
-        self.report_train_metrics(y_g_hat, y, lengths)
+        scheduler_g.step()
+        scheduler_d.step()
 
     def validation_step(self, batch: Any, batch_idx: int):
         y, lengths = batch["audio"], batch["lengths"]
@@ -204,7 +205,7 @@ class HiFiGANModel(VocoderModel):
         loss_mel = F.l1_loss(y_mel, y_g_hat_mel)
 
         self.log(
-            "val/losses/mel",
+            "val/metrics/mel",
             loss_mel,
             on_step=False,
             on_epoch=True,

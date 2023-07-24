@@ -77,12 +77,14 @@ class MultiPeriodDiscriminator(nn.Module):
     def forward(
         self, x: torch.Tensor
     ) -> tuple[list[torch.Tensor], list[list[torch.Tensor]]]:
-        ret_x, ret_fmap = [], []
+        scores, feature_map = [], []
 
         for disc in self.discriminators:
             res, fmap = disc(x)
 
-            ret_x.append(res)
-            ret_fmap.append(fmap)
+            scores.append(res)
+            feature_map.append(fmap)
 
-        return ret_x, ret_fmap
+        scores = torch.cat(scores, dim=1)
+
+        return scores, feature_map

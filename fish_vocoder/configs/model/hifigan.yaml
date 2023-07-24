@@ -1,7 +1,7 @@
 _target_: fish_vocoder.models.hifigan.HiFiGANModel
 
 sampling_rate: 44100
-num_mels: 160
+num_mels: 128
 n_fft: 2048
 hop_length: 512
 win_length: 2048
@@ -64,6 +64,12 @@ discriminators:
     mrd:
       _target_: fish_vocoder.modules.discriminators.mrd.MultiResolutionDiscriminator
       resolutions:
+        - ["${model.n_fft}", "${model.hop_length}", "${model.win_length}"]
         - [1024, 120, 600]
         - [2048, 240, 1200]
+        - [4096, 480, 2400]
         - [512, 50, 240]
+
+multi_resolution_stft_loss:
+  _target_: fish_vocoder.modules.losses.stft.MultiResolutionSTFTLoss
+  resolutions: ${model.discriminators.modules.mrd.resolutions}

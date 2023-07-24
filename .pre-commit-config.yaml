@@ -25,3 +25,4 @@ repos:
     hooks:
       - id: codespell
         files: ^.*\.(py|md|rst|yml)$
+        args: [-L=fro]
