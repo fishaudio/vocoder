@@ -71,7 +71,7 @@ class VocoderModel(L.LightningModule):
         y_g_hat_mel = self.viz_mel_transform(y_g_hat.squeeze(1))
 
         for idx, (mel, gen_mel, audio, gen_audio, audio_len) in enumerate(
-            zip(y_mel, y_g_hat_mel, y, y_g_hat, lengths)
+            zip(y_mel, y_g_hat_mel, y.detach().cpu(), y_g_hat.detach().cpu(), lengths)
         ):
             mel_len = audio_len // self.hop_length
 
