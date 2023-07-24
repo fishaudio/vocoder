@@ -1,16 +1,20 @@
-_target_: lightning.Fabric
-# need to convert primitive types, otherwise logger will not be list
-_convert_: partial
+_target_: lightning.pytorch.trainer.Trainer
+
+default_root_dir: ${paths.output_dir}
+max_steps: 2000000  # 2M steps
 
 accelerator: cuda
 devices: auto
 num_nodes: 1
 strategy: ddp
 
-# fp32 will be automatically cast into tf32 on compatible GPUs
+# 32-bit precision (tf32 on compatible GPUs)
 precision: "32"
 
-loggers:
-  - _target_: lightning.fabric.loggers.TensorBoardLogger
-    root_dir: ${paths.run_dir}/tensorboard/
-    name: null
+# disable validation by epoch end
+check_val_every_n_epoch: null
+val_check_interval: 5000
+
+# set True to to ensure deterministic results
+# makes training slower but gives more reproducibility than just setting seeds
+deterministic: False

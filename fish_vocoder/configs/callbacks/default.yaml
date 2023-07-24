@@ -1,0 +1,20 @@
+defaults:
+  - model_checkpoint
+  - model_summary
+  - rich_progress_bar
+  - learning_rate_monitor
+  - _self_
+
+model_checkpoint:
+  dirpath: ${paths.output_dir}/checkpoints
+  filename: "step_{step:09d}"
+  save_last: True # additionally always save an exact copy of the last checkpoint to a file last.ckpt
+  save_top_k: -1 # save 5 latest checkpoints
+  monitor: step # use step to monitor checkpoints
+  mode: max # save the latest checkpoint with the highest global_step
+  every_n_epochs: null # don't save checkpoints by epoch end
+  every_n_train_steps: 5000 # save checkpoints every 5000 steps
+  auto_insert_metric_name: False
+
+model_summary:
+  max_depth: -1

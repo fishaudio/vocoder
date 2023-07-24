@@ -82,9 +82,8 @@ class LogMelSpectrogram(nn.Module):
             self.f_min,
             self.f_max,
             self.n_fft // 2 + 1,
-            # "slaney",
-            # None,
-            # "slaney",
+            "slaney",
+            "slaney",
         )
 
     def compress(self, x: Tensor) -> Tensor:
