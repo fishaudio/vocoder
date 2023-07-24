@@ -61,7 +61,7 @@ class VocoderModel(L.LightningModule):
             si_snr,
             on_step=False,
             on_epoch=True,
-            prog_bar=True,
+            prog_bar=False,
             logger=True,
             sync_dist=True,
         )
