@@ -9,7 +9,7 @@ win_length: 2048
 optimizer:
   _target_: torch.optim.AdamW
   _partial_: true
-  lr: 2e-4
+  lr: 1
   betas: [0.8, 0.99]
   eps: 1e-6
 
