@@ -3,7 +3,8 @@ import torch
 import wandb
 from lightning.pytorch.loggers import TensorBoardLogger, WandbLogger
 from matplotlib import pyplot as plt
-from torchmetrics.functional.audio.snr import scale_invariant_signal_noise_ratio
+from torchaudio.functional import resample
+from torchmetrics.functional.audio.pesq import perceptual_evaluation_speech_quality
 
 from fish_vocoder.data.transforms.spectrogram import LogMelSpectrogram
 from fish_vocoder.utils.viz import plot_mel
@@ -37,28 +38,20 @@ class VocoderModel(L.LightningModule):
         )
 
     @torch.no_grad()
-    def report_train_metrics(self, y_g_hat, y, lengths):
-        # SI-SNR
-        si_snr = scale_invariant_signal_noise_ratio(y_g_hat, y).mean()
+    def pesq(self, y_hat, y, sr=16000):
+        y_hat = resample(y_hat, self.sampling_rate, sr)
+        y = resample(y, self.sampling_rate, sr)
 
-        self.log(
-            "train/metrics/si_snr",
-            si_snr,
-            on_step=True,
-            on_epoch=False,
-            prog_bar=False,
-            logger=True,
-            sync_dist=True,
-        )
+        return perceptual_evaluation_speech_quality(y_hat, y, sr, "wb").mean()
 
     @torch.no_grad()
     def report_val_metrics(self, y_g_hat, y, lengths):
-        # SI-SNR
-        si_snr = scale_invariant_signal_noise_ratio(y_g_hat, y).mean()
+        # PESQ
+        pesq = self.pesq(y_g_hat, y)
 
         self.log(
-            "val/metrics/si_snr",
-            si_snr,
+            "val/metrics/pesq",
+            pesq,
             on_step=False,
             on_epoch=True,
             prog_bar=False,
