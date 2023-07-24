@@ -6,7 +6,7 @@ max_steps: 2000000  # 2M steps
 accelerator: cuda
 devices: auto
 num_nodes: 1
-strategy: ddp
+strategy: ddp_find_unused_parameters_true
 
 # 32-bit precision (tf32 on compatible GPUs)
 precision: "32"

@@ -7,7 +7,7 @@ defaults:
   - data: vocoder
   - model: hifigan
   - callbacks: default
-  - logger: tensorboard
+  - logger: wandb
   - trainer: default
   - paths: default
   - extras: default

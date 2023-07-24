@@ -5,7 +5,7 @@ from omegaconf import DictConfig
 from pytorch_lightning import Callback
 from pytorch_lightning.loggers import Logger
 
-from fish_vocoder.utils import logger as log
+from fish_vocoder.utils.logger import logger as log
 
 
 def instantiate_callbacks(callbacks_cfg: DictConfig) -> List[Callback]:
