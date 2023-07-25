@@ -8,6 +8,8 @@ from lightning import Callback, LightningDataModule, LightningModule, Trainer
 from lightning.pytorch.loggers import Logger
 from omegaconf import DictConfig, OmegaConf
 
+from fish_vocoder.utils.file import get_latest_checkpoint
+
 # register eval resolver and root
 pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 OmegaConf.register_new_resolver("eval", eval)
@@ -77,6 +79,12 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
         log.info("Starting training!")
 
         ckpt_path = cfg.get("ckpt_path")
+
+        if ckpt_path is None:
+            ckpt_path = get_latest_checkpoint(cfg.paths.ckpt_dir)
+
+        if ckpt_path is not None:
+            log.info(f"Resuming from checkpoint: {ckpt_path}")
 
         if cfg.get("resume_weights_only"):
             log.info("Resuming weights only!")

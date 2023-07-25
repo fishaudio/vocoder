@@ -23,6 +23,7 @@ class HiFiGANModel(VocoderModel):
         generator: nn.Module,
         discriminators: nn.ModuleDict,
         multi_resolution_stft_loss: MultiResolutionSTFTLoss,
+        crop_length: int | None = None,
     ):
         super().__init__(
             sampling_rate=sampling_rate,
@@ -45,6 +46,9 @@ class HiFiGANModel(VocoderModel):
 
         # Loss
         self.multi_resolution_stft_loss = multi_resolution_stft_loss
+
+        # Crop length for saving memory
+        self.crop_length = crop_length
 
         # Disable automatic optimization
         self.automatic_optimization = False
@@ -119,6 +123,16 @@ class HiFiGANModel(VocoderModel):
                 logger=True,
                 sync_dist=True,
             )
+
+        # Now, we need to reduce the length of the audio to save memory
+        if self.crop_length is not None and audio.shape[2] > self.crop_length:
+            slice_idx = torch.randint(0, audio.shape[-1] - self.crop_length, (1,))
+
+            audio = audio[..., slice_idx : slice_idx + self.crop_length]
+            fake_audio = fake_audio[..., slice_idx : slice_idx + self.crop_length]
+            audio_mask = audio_mask[..., slice_idx : slice_idx + self.crop_length]
+
+            assert audio.shape == fake_audio.shape == audio_mask.shape
 
         # Adv Loss
         loss_adv_all = 0

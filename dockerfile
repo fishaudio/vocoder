@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/pytorch:23.05-py3
+FROM nvcr.io/nvidia/pytorch:23.06-py3
 
 # Install system dependencies
 ENV DEBIAN_FRONTEND=noninteractive

@@ -6,6 +6,10 @@ n_fft: 2048
 hop_length: 512
 win_length: 2048
 
+# While generator is running in large, we need to crop 32
+# frames for discriminator to save memory.
+crop_length: "${eval: '${model.hop_length} * 32'}"
+
 optimizer:
   _target_: torch.optim.AdamW
   _partial_: true
@@ -20,7 +24,7 @@ lr_scheduler:
     _target_: fish_vocoder.schedulers.warmup_cosine.LambdaWarmUpCosineScheduler
     val_base: 2e-4
     val_final: 0
-    max_decay_steps: ${trainer.max_steps}
+    max_decay_steps: "${eval: ${trainer.max_steps} // 2}"
 
 mel_transforms:
   _target_: torch.nn.ModuleDict
