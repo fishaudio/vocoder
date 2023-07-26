@@ -24,6 +24,7 @@ class HiFiGANModel(VocoderModel):
         discriminators: nn.ModuleDict,
         multi_resolution_stft_loss: MultiResolutionSTFTLoss,
         crop_length: int | None = None,
+        feature_matching_loss: bool = False,
     ):
         super().__init__(
             sampling_rate=sampling_rate,
@@ -46,6 +47,7 @@ class HiFiGANModel(VocoderModel):
 
         # Loss
         self.multi_resolution_stft_loss = multi_resolution_stft_loss
+        self.feature_matching_loss = feature_matching_loss
 
         # Crop length for saving memory
         self.crop_length = crop_length
@@ -138,7 +140,7 @@ class HiFiGANModel(VocoderModel):
         loss_adv_all = 0
 
         for key, disc in self.discriminators.items():
-            score_fake, _ = disc(fake_audio)
+            score_fake, feat_fake = disc(fake_audio)
             loss_fake = torch.mean((1 - score_fake) ** 2)
 
             self.log(
@@ -152,6 +154,22 @@ class HiFiGANModel(VocoderModel):
             )
 
             loss_adv_all += loss_fake
+
+            if self.feature_matching_loss:
+                _, feat_real = disc(audio)
+                loss_fm = self.feature_matching(feat_real, feat_fake)
+
+                self.log(
+                    f"train/generator/adv_fm_{key}",
+                    loss_fm,
+                    on_step=True,
+                    on_epoch=False,
+                    prog_bar=False,
+                    logger=True,
+                    sync_dist=True,
+                )
+
+                loss_adv_all += loss_fm
 
         loss_adv_all /= len(self.discriminators)
         loss_gen_all = loss_stft * 2.5 + loss_adv_all
@@ -232,35 +250,7 @@ class HiFiGANModel(VocoderModel):
         self.report_val_metrics(y_g_hat, y, lengths)
 
     @staticmethod
-    def discriminator_loss(disc_real_outputs, disc_generated_outputs):
-        loss = 0
-        r_losses = []
-        g_losses = []
-
-        for dr, dg in zip(disc_real_outputs, disc_generated_outputs):
-            r_loss = torch.mean((1 - dr) ** 2)
-            g_loss = torch.mean(dg**2)
-
-            loss += r_loss + g_loss
-            r_losses.append(r_loss.item())
-            g_losses.append(g_loss.item())
-
-        return loss, r_losses, g_losses
-
-    @staticmethod
-    def generator_loss(disc_outputs):
-        loss = 0
-        losses = []
-
-        for dg in disc_outputs:
-            temp = torch.mean((1 - dg) ** 2)
-            losses.append(temp)
-            loss += temp
-
-        return loss, losses
-
-    @staticmethod
-    def feature_matching_loss(disc_real_outputs, disc_generated_outputs):
+    def feature_matching(disc_real_outputs, disc_generated_outputs):
         losses = []
 
         for dr, dg in zip(disc_real_outputs, disc_generated_outputs):

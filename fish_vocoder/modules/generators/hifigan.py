@@ -7,8 +7,6 @@ import torch.nn.functional as F
 from torch.nn import Conv1d
 from torch.nn.utils import remove_weight_norm, weight_norm
 
-LRELU_SLOPE = 0.1
-
 
 def init_weights(m, mean=0.0, std=0.01):
     classname = m.__class__.__name__
@@ -21,9 +19,9 @@ def get_padding(kernel_size, dilation=1):
 
 
 class ResBlock1(torch.nn.Module):
-    def __init__(self, h, channels, kernel_size=3, dilation=(1, 3, 5)):
-        super(ResBlock1, self).__init__()
-        self.h = h
+    def __init__(self, channels, kernel_size=3, dilation=(1, 3, 5)):
+        super().__init__()
+
         self.convs1 = nn.ModuleList(
             [
                 weight_norm(
@@ -159,7 +157,7 @@ class HiFiGANGenerator(nn.Module):
             if not use_template:
                 continue
 
-            if i + 1 < len(upsample_rates):  #
+            if i + 1 < len(upsample_rates):
                 stride_f0 = np.prod(upsample_rates[i + 1 :])
                 self.noise_convs.append(
                     Conv1d(
@@ -177,7 +175,7 @@ class HiFiGANGenerator(nn.Module):
         for i in range(len(self.ups)):
             ch = upsample_initial_channel // (2 ** (i + 1))
             for k, d in zip(resblock_kernel_sizes, resblock_dilation_sizes):
-                self.resblocks.append(ResBlock1(None, ch, k, d))
+                self.resblocks.append(ResBlock1(ch, k, d))
 
         self.conv_post = weight_norm(nn.Conv1d(ch, 1, 7, 1, padding=3))
         self.ups.apply(init_weights)
@@ -194,11 +192,13 @@ class HiFiGANGenerator(nn.Module):
                 x = x + self.noise_convs[i](template)
 
             xs = None
+
             for j in range(self.num_kernels):
                 if xs is None:
                     xs = self.resblocks[i * self.num_kernels + j](x)
                 else:
                     xs += self.resblocks[i * self.num_kernels + j](x)
+
             x = xs / self.num_kernels
 
         x = F.silu(x, inplace=True)

@@ -77,3 +77,5 @@ discriminators:
 multi_resolution_stft_loss:
   _target_: fish_vocoder.modules.losses.stft.MultiResolutionSTFTLoss
   resolutions: ${model.discriminators.modules.mrd.resolutions}
+
+feature_matching_loss: false

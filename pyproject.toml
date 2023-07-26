@@ -26,6 +26,7 @@ dependencies = [
     "vocos>=0.0.2",
     "transformers>=4.31.0",
     "pesq>=0.0.4",
+    "alias-free-torch>=0.0.6",
 ]
 
 [tool.pdm]
