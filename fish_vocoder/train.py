@@ -8,17 +8,16 @@ from lightning import Callback, LightningDataModule, LightningModule, Trainer
 from lightning.pytorch.loggers import Logger
 from omegaconf import DictConfig, OmegaConf
 
-from fish_vocoder.utils.file import get_latest_checkpoint
+# Allow TF32 on Ampere GPUs
+torch.set_float32_matmul_precision("high")
 
 # register eval resolver and root
 pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 OmegaConf.register_new_resolver("eval", eval)
 
-# Allow TF32 on Ampere GPUs
-torch.set_float32_matmul_precision("high")
-
 # flake8: noqa: E402
 from fish_vocoder import utils
+from fish_vocoder.utils.file import get_latest_checkpoint
 from fish_vocoder.utils.logger import logger as log
 
 
