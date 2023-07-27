@@ -158,3 +158,5 @@ pitches_editor
 .hydra
 .pgx.*
 other
+filelist.*
+run.sh
