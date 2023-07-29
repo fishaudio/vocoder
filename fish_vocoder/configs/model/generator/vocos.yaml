@@ -1,0 +1,14 @@
+_target_: fish_vocoder.modules.generators.vocos.VocosGenerator
+backbone:
+  _target_: fish_vocoder.modules.generators.vocos.VocosBackbone
+  input_channels: ${model.num_mels}
+  dim: 768
+  intermediate_dim: 2304
+  num_layers: 20
+  kernel_sizes: [3, 5, 7]
+head:
+  _target_: fish_vocoder.modules.generators.vocos.ISTFTHead
+  dim: 768
+  n_fft: ${model.n_fft}
+  hop_length: ${model.hop_length}
+  padding: same

@@ -9,7 +9,7 @@ from fish_vocoder.modules.losses.stft import MultiResolutionSTFTLoss
 from fish_vocoder.utils.mask import sequence_mask
 
 
-class HiFiGANModel(VocoderModel):
+class GANModel(VocoderModel):
     def __init__(
         self,
         sampling_rate: int,
