@@ -1,0 +1,10 @@
+defaults:
+  - hifigan
+  - _self_
+
+upsample_rates: [8, 8, 2, 2, 2]  # aka. strides
+upsample_kernel_sizes: [16, 16, 4, 4, 4]
+resblock_kernel_sizes: [3, 7, 11, 13]
+resblock_dilation_sizes: [[1, 3, 5], [1, 3, 5], [1, 3, 5], [1, 3, 5]]
+pre_conv_kernel_size: 13
+post_conv_kernel_size: 13
