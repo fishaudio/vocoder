@@ -31,15 +31,17 @@ datasets:
           multiple_of: ${model.hop_length}
 
   val:
-    _target_: fish_vocoder.data.datasets.vocoder.VocoderDataset
-    root: dataset/valid
-    transform:
-      _target_: torch.nn.Sequential
-      _args_:
-        - _target_: fish_vocoder.data.transforms.load.LoadAudio
-          sampling_rate: ${model.sampling_rate}
-        - _target_: fish_vocoder.data.transforms.crop.RandomCrop
-          probability: 1
-          crop_length: "${eval: '${model.hop_length} * 1000'}"
-        - _target_: fish_vocoder.data.transforms.pad.Pad
-          multiple_of: ${model.hop_length}
+    _target_: fish_vocoder.data.datasets.repeat.RepeatDataset
+    dataset:
+      _target_: fish_vocoder.data.datasets.vocoder.VocoderDataset
+      root: dataset/valid
+      transform:
+        _target_: torch.nn.Sequential
+        _args_:
+          - _target_: fish_vocoder.data.transforms.load.LoadAudio
+            sampling_rate: ${model.sampling_rate}
+          - _target_: fish_vocoder.data.transforms.crop.RandomCrop
+            probability: 1
+            crop_length: "${eval: '${model.hop_length} * 1000'}"
+          - _target_: fish_vocoder.data.transforms.pad.Pad
+            multiple_of: ${model.hop_length}

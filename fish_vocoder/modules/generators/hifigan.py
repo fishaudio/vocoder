@@ -15,7 +15,7 @@ def init_weights(m, mean=0.0, std=0.01):
 
 
 def get_padding(kernel_size, dilation=1):
-    return int((kernel_size * dilation - dilation) / 2)
+    return (kernel_size * dilation - dilation) // 2
 
 
 class ResBlock1(torch.nn.Module):
@@ -122,6 +122,8 @@ class HiFiGANGenerator(nn.Module):
         num_mels: int = 128,
         upsample_initial_channel: int = 512,
         use_template: bool = True,
+        pre_conv_kernel_size: int = 7,
+        post_conv_kernel_size: int = 7,
     ):
         super().__init__()
 
@@ -130,7 +132,13 @@ class HiFiGANGenerator(nn.Module):
         ), f"hop_length must be {prod(upsample_rates)}"
 
         self.conv_pre = weight_norm(
-            nn.Conv1d(num_mels, upsample_initial_channel, 7, 1, padding=3)
+            nn.Conv1d(
+                num_mels,
+                upsample_initial_channel,
+                pre_conv_kernel_size,
+                1,
+                padding=get_padding(pre_conv_kernel_size),
+            )
         )
 
         self.num_upsamples = len(upsample_rates)
@@ -177,7 +185,15 @@ class HiFiGANGenerator(nn.Module):
             for k, d in zip(resblock_kernel_sizes, resblock_dilation_sizes):
                 self.resblocks.append(ResBlock1(ch, k, d))
 
-        self.conv_post = weight_norm(nn.Conv1d(ch, 1, 7, 1, padding=3))
+        self.conv_post = weight_norm(
+            nn.Conv1d(
+                ch,
+                1,
+                post_conv_kernel_size,
+                1,
+                padding=get_padding(post_conv_kernel_size),
+            )
+        )
         self.ups.apply(init_weights)
         self.conv_post.apply(init_weights)
 
