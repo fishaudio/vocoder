@@ -23,13 +23,13 @@ from fish_vocoder.utils.logger import logger
 @torch.no_grad()
 def main(cfg: DictConfig):
     model: LightningModule = instantiate(cfg.model)
-    model.load_state_dict(torch.load("other/step_000465000.ckpt")["state_dict"])
+    model.load_state_dict(torch.load(cfg.ckpt_path)["state_dict"])
     model.eval()
     model.cuda()
 
     model.generator.remove_weight_norm()
 
-    gt_y, sr = torchaudio.load("other/测试专用.wav")
+    gt_y, sr = torchaudio.load("other/周深 - 人是_.flac")
     gt_y = torchaudio.functional.resample(gt_y[0], sr, 44100)
     # pitch shift
     # gt_y = torchaudio.functional.pitch_shift(gt_y, sr, -8)

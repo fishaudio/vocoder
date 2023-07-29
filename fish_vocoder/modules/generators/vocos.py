@@ -1,85 +1,145 @@
 from functools import partial
-from typing import Optional
 
 import torch
+import torch.nn.functional as F
 from torch import Tensor, nn
-from vocos.heads import FourierHead
-from vocos.models import AdaLayerNorm, Backbone
 from vocos.spectral_ops import ISTFT
 
 
+def drop_path(
+    x, drop_prob: float = 0.0, training: bool = False, scale_by_keep: bool = True
+):
+    """Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks).
+
+    This is the same as the DropConnect impl I created for EfficientNet, etc networks, however,
+    the original name is misleading as 'Drop Connect' is a different form of dropout in a separate paper...
+    See discussion: https://github.com/tensorflow/tpu/issues/494#issuecomment-532968956 ... I've opted for
+    changing the layer and argument names to 'drop path' rather than mix DropConnect as a layer name and use
+    'survival rate' as the argument.
+
+    """  # noqa: E501
+
+    if drop_prob == 0.0 or not training:
+        return x
+    keep_prob = 1 - drop_prob
+    shape = (x.shape[0],) + (1,) * (
+        x.ndim - 1
+    )  # work with diff dim tensors, not just 2D ConvNets
+    random_tensor = x.new_empty(shape).bernoulli_(keep_prob)
+    if keep_prob > 0.0 and scale_by_keep:
+        random_tensor.div_(keep_prob)
+    return x * random_tensor
+
+
+class DropPath(nn.Module):
+    """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks)."""  # noqa: E501
+
+    def __init__(self, drop_prob: float = 0.0, scale_by_keep: bool = True):
+        super(DropPath, self).__init__()
+        self.drop_prob = drop_prob
+        self.scale_by_keep = scale_by_keep
+
+    def forward(self, x):
+        return drop_path(x, self.drop_prob, self.training, self.scale_by_keep)
+
+    def extra_repr(self):
+        return f"drop_prob={round(self.drop_prob,3):0.3f}"
+
+
+class LayerNorm(nn.Module):
+    r"""LayerNorm that supports two data formats: channels_last (default) or channels_first.
+    The ordering of the dimensions in the inputs. channels_last corresponds to inputs with
+    shape (batch_size, height, width, channels) while channels_first corresponds to inputs
+    with shape (batch_size, channels, height, width).
+    """  # noqa: E501
+
+    def __init__(self, normalized_shape, eps=1e-6, data_format="channels_last"):
+        super().__init__()
+        self.weight = nn.Parameter(torch.ones(normalized_shape))
+        self.bias = nn.Parameter(torch.zeros(normalized_shape))
+        self.eps = eps
+        self.data_format = data_format
+        if self.data_format not in ["channels_last", "channels_first"]:
+            raise NotImplementedError
+        self.normalized_shape = (normalized_shape,)
+
+    def forward(self, x):
+        if self.data_format == "channels_last":
+            return F.layer_norm(
+                x, self.normalized_shape, self.weight, self.bias, self.eps
+            )
+        elif self.data_format == "channels_first":
+            u = x.mean(1, keepdim=True)
+            s = (x - u).pow(2).mean(1, keepdim=True)
+            x = (x - u) / torch.sqrt(s + self.eps)
+            x = self.weight[:, None] * x + self.bias[:, None]
+            return x
+
+
 class ConvNeXtBlock(nn.Module):
-    """ConvNeXt Block adapted from https://github.com/facebookresearch/ConvNeXt to 1D audio signal.
+    r"""ConvNeXt Block. There are two equivalent implementations:
+    (1) DwConv -> LayerNorm (channels_first) -> 1x1 Conv -> GELU -> 1x1 Conv; all in (N, C, H, W)
+    (2) DwConv -> Permute to (N, H, W, C); LayerNorm (channels_last) -> Linear -> GELU -> Linear; Permute back
+    We use (2) as we find it slightly faster in PyTorch
 
     Args:
         dim (int): Number of input channels.
-        intermediate_dim (int): Dimensionality of the intermediate layer.
-        layer_scale_init_value (float, optional): Initial value for the layer scale. None means no scaling.
-            Defaults to None.
-        adanorm_num_embeddings (int, optional): Number of embeddings for AdaLayerNorm.
-            None means non-conditional LayerNorm. Defaults to None.
+        drop_path (float): Stochastic depth rate. Default: 0.0
+        layer_scale_init_value (float): Init value for Layer Scale. Default: 1e-6.
+        mlp_ratio (float): Ratio of mlp hidden dim to embedding dim. Default: 4.0.
+        kernel_size (int): Kernel size for depthwise conv. Default: 7.
+        dilation (int): Dilation for depthwise conv. Default: 1.
     """  # noqa: E501
 
     def __init__(
         self,
         dim: int,
-        intermediate_dim: int,
-        layer_scale_init_value: Optional[float] = None,
-        adanorm_num_embeddings: Optional[int] = None,
-        dilation: int = 1,
+        drop_path: float = 0.0,
+        layer_scale_init_value: float = 1e-6,
+        mlp_ratio: float = 4.0,
         kernel_size: int = 7,
+        dilation: int = 1,
     ):
         super().__init__()
+
         self.dwconv = nn.Conv1d(
             dim,
             dim,
             kernel_size=kernel_size,
             padding=int(dilation * (kernel_size - 1) / 2),
             groups=dim,
-            dilation=dilation,
         )  # depthwise conv
-
-        self.adanorm = adanorm_num_embeddings is not None
-
-        if adanorm_num_embeddings:
-            self.norm = AdaLayerNorm(adanorm_num_embeddings, dim, eps=1e-6)
-        else:
-            self.norm = nn.LayerNorm(dim, eps=1e-6)
-
+        self.norm = LayerNorm(dim, eps=1e-6)
         self.pwconv1 = nn.Linear(
-            dim, intermediate_dim
+            dim, int(mlp_ratio * dim)
         )  # pointwise/1x1 convs, implemented with linear layers
         self.act = nn.GELU()
-        self.pwconv2 = nn.Linear(intermediate_dim, dim)
+        self.pwconv2 = nn.Linear(int(mlp_ratio * dim), dim)
         self.gamma = (
-            nn.Parameter(layer_scale_init_value * torch.ones(dim), requires_grad=True)
+            nn.Parameter(layer_scale_init_value * torch.ones((dim)), requires_grad=True)
             if layer_scale_init_value > 0
             else None
         )
+        self.drop_path = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
 
-    def forward(
-        self,
-        x: torch.Tensor,
-        cond_embedding_id: Optional[torch.Tensor] = None,
-        apply_residual: bool = True,
-    ) -> torch.Tensor:
-        residual = x
+    def forward(self, x, apply_residual: bool = True):
+        input = x
+
         x = self.dwconv(x)
-        x = x.transpose(1, 2)  # (B, C, T) -> (B, T, C)
-        if self.adanorm:
-            assert cond_embedding_id is not None
-            x = self.norm(x, cond_embedding_id)
-        else:
-            x = self.norm(x)
+        x = x.permute(0, 2, 1)  # (N, C, L) -> (N, L, C)
+        x = self.norm(x)
         x = self.pwconv1(x)
         x = self.act(x)
         x = self.pwconv2(x)
+
         if self.gamma is not None:
             x = self.gamma * x
-        x = x.transpose(1, 2)  # (B, T, C) -> (B, C, T)
+
+        x = x.permute(0, 2, 1)  # (N, L, C) -> (N, C, L)
+        x = self.drop_path(x)
 
         if apply_residual:
-            x = residual + x
+            x = input + x
 
         return x
 
@@ -94,54 +154,39 @@ class ParallelConvNeXtBlock(nn.Module):
             ]
         )
 
-    def forward(
-        self, x: torch.Tensor, cond_embedding_id: Optional[torch.Tensor] = None
-    ) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return torch.stack(
-            [block(x, cond_embedding_id, apply_residual=False) for block in self.blocks]
-            + [x],
+            [block(x, apply_residual=False) for block in self.blocks] + [x],
             dim=1,
-        ).mean(dim=1)
+        ).sum(dim=1)
 
 
-class VocosBackbone(Backbone):
-    """
-    Vocos backbone module built with ConvNeXt blocks. Supports additional conditioning with Adaptive Layer Normalization
-
-    Args:
-        input_channels (int): Number of input features channels.
-        dim (int): Hidden dimension of the model.
-        intermediate_dim (int): Intermediate dimension used in ConvNeXtBlock.
-        num_layers (int): Number of ConvNeXtBlock layers.
-        layer_scale_init_value (float, optional): Initial value for layer scaling. Defaults to `1 / num_layers`.
-        adanorm_num_embeddings (int, optional): Number of embeddings for AdaLayerNorm.
-                                                None means non-conditional model. Defaults to None.
-        dilation_cycle (int, optional): Dilation cycle for ConvNeXtBlock. Defaults to 4.
-        kernel_sizes (tuple, optional): Kernel sizes for ParallelConvNeXtBlock. Defaults to (7,).
-    """  # noqa: E501
-
+class VocosBackbone(nn.Module):
     def __init__(
         self,
-        input_channels: int,
-        dim: int,
-        intermediate_dim: int,
-        num_layers: int,
-        layer_scale_init_value: Optional[float] = None,
-        adanorm_num_embeddings: Optional[int] = None,
-        dilation_cycle=4,
-        kernel_sizes=(7,),
+        input_channels=3,
+        depths=[3, 3, 9, 3],
+        dims=[96, 192, 384, 768],
+        drop_path_rate=0.0,
+        layer_scale_init_value=1e-6,
+        kernel_sizes: tuple[int] = (7,),
     ):
         super().__init__()
-        self.input_channels = input_channels
-        self.embed = nn.Conv1d(input_channels, dim, kernel_size=7, padding=3)
-        self.adanorm = adanorm_num_embeddings is not None
+        assert len(depths) == len(dims)
 
-        if adanorm_num_embeddings:
-            self.norm = AdaLayerNorm(adanorm_num_embeddings, dim, eps=1e-6)
-        else:
-            self.norm = nn.LayerNorm(dim, eps=1e-6)
+        self.channel_layers = nn.ModuleList()
+        stem = nn.Sequential(
+            nn.Conv1d(input_channels, dims[0], kernel_size=7, padding=3),
+            LayerNorm(dims[0], eps=1e-6, data_format="channels_first"),
+        )
+        self.channel_layers.append(stem)
 
-        layer_scale_init_value = layer_scale_init_value or 1 / num_layers
+        for i in range(len(depths) - 1):
+            mid_layer = nn.Sequential(
+                LayerNorm(dims[i], eps=1e-6, data_format="channels_first"),
+                nn.Conv1d(dims[i], dims[i + 1], kernel_size=1),
+            )
+            self.channel_layers.append(mid_layer)
 
         block_fn = (
             partial(ConvNeXtBlock, kernel_size=kernel_sizes[0])
@@ -149,19 +194,27 @@ class VocosBackbone(Backbone):
             else partial(ParallelConvNeXtBlock, kernel_sizes=kernel_sizes)
         )
 
-        self.convnext = nn.ModuleList(
-            [
-                block_fn(
-                    dim=dim,
-                    intermediate_dim=intermediate_dim,
-                    layer_scale_init_value=layer_scale_init_value,
-                    adanorm_num_embeddings=adanorm_num_embeddings,
-                    dilation=2 ** (i % dilation_cycle),
-                )
-                for i in range(num_layers)
-            ]
-        )
-        self.final_layer_norm = nn.LayerNorm(dim, eps=1e-6)
+        self.stages = nn.ModuleList()
+        drop_path_rates = [
+            x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))
+        ]
+
+        cur = 0
+        for i in range(len(depths)):
+            stage = nn.Sequential(
+                *[
+                    block_fn(
+                        dim=dims[i],
+                        drop_path=drop_path_rates[cur + j],
+                        layer_scale_init_value=layer_scale_init_value,
+                    )
+                    for j in range(depths[i])
+                ]
+            )
+            self.stages.append(stage)
+            cur += depths[i]
+
+        self.norm = LayerNorm(dims[-1], eps=1e-6, data_format="channels_first")
         self.apply(self._init_weights)
 
     def _init_weights(self, m):
@@ -170,22 +223,17 @@ class VocosBackbone(Backbone):
             nn.init.constant_(m.bias, 0)
 
     def forward(
-        self, x: torch.Tensor, bandwidth_id: Optional[torch.Tensor] = None
+        self,
+        x: torch.Tensor,
     ) -> torch.Tensor:
-        x = self.embed(x)
-        if self.adanorm:
-            assert bandwidth_id is not None
-            x = self.norm(x.transpose(1, 2), cond_embedding_id=bandwidth_id)
-        else:
-            x = self.norm(x.transpose(1, 2))
-        x = x.transpose(1, 2)
-        for conv_block in self.convnext:
-            x = conv_block(x, cond_embedding_id=bandwidth_id)
-        x = self.final_layer_norm(x.transpose(1, 2))
-        return x
+        for channel_layer, stage in zip(self.channel_layers, self.stages):
+            x = channel_layer(x)
+            x = stage(x)
+
+        return self.norm(x)
 
 
-class ISTFTHead(FourierHead):
+class ISTFTHead(nn.Module):
     """
     ISTFT Head module for predicting STFT complex coefficients.
 
@@ -199,8 +247,8 @@ class ISTFTHead(FourierHead):
 
     def __init__(self, dim: int, n_fft: int, hop_length: int, padding: str = "same"):
         super().__init__()
-        out_dim = n_fft + 2
-        self.out = torch.nn.Linear(dim, out_dim)
+        out_dim = n_fft * 2
+        self.out = nn.Conv1d(dim, out_dim, 1)
         self.istft = ISTFT(
             n_fft=n_fft, hop_length=hop_length, win_length=n_fft, padding=padding
         )
@@ -210,14 +258,15 @@ class ISTFTHead(FourierHead):
         Forward pass of the ISTFTHead module.
 
         Args:
-            x (Tensor): Input tensor of shape (B, L, H), where B is the batch size,
+            x (Tensor): Input tensor of shape (B, H, L), where B is the batch size,
                         L is the sequence length, and H denotes the model dimension.
 
         Returns:
             Tensor: Reconstructed time-domain audio signal of shape (B, T), where T is the length of the output signal.
         """  # noqa: E501
 
-        x = self.out(x).transpose(1, 2)
+        x = self.out(x)
+
         mag, p = x.chunk(2, dim=1)
         mag = torch.exp(mag)
         mag = torch.clip(
@@ -226,18 +275,16 @@ class ISTFTHead(FourierHead):
         # wrapping happens here. These two lines produce real and imaginary value
         x = torch.cos(p)
         y = torch.sin(p)
-        # recalculating phase here does not produce anything new
-        # only costs time
         phase = torch.atan2(y, x)
         S = mag * torch.exp(phase * 1j)
-        # better directly produce the complex value
-        # S = mag * (x + 1j * y)
+
         audio = self.istft(S)
+
         return audio
 
 
 class VocosGenerator(nn.Module):
-    def __init__(self, backbone: Backbone, head: FourierHead):
+    def __init__(self, backbone: nn.Module, head: nn.Module):
         super().__init__()
 
         self.backbone = backbone
