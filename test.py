@@ -54,7 +54,7 @@ def main(cfg: DictConfig):
     logger.info(f"Time taken: {time.time() - start:.2f}s")
 
     generated_name = (
-        f"generated_{cfg.task_name}_{ckpt['global_step']}"
+        f"generated_{cfg.task_name}_{ckpt['global_step']}_"
         + f"{Path(cfg.input_path).stem}.wav"
     )
     output_path = cfg.output_path or generated_name
