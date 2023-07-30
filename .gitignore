@@ -160,3 +160,4 @@ pitches_editor
 other
 filelist.*
 run.sh
+/generated_*

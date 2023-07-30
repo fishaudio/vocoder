@@ -1,0 +1,4 @@
+python test.py task_name=vocos-huge \
+    model/generator=vocos-huge \
+    ckpt_path=other/vocos_huge/step_000040000.ckpt \
+    'input_path="other/rainy6.wav"'

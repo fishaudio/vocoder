@@ -51,3 +51,8 @@ resume_weights_only: False
 
 # seed for random number generators in pytorch, numpy and python.random
 seed: 594461
+
+# Inference Arguments
+input_path: null
+output_path: null
+pitch_shift: 0
