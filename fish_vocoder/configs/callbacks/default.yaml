@@ -13,7 +13,7 @@ model_checkpoint:
   monitor: step # use step to monitor checkpoints
   mode: max # save the latest checkpoint with the highest global_step
   every_n_epochs: null # don't save checkpoints by epoch end
-  every_n_train_steps: 5000 # save checkpoints every 5000 steps
+  every_n_train_steps: 20000 # save checkpoints every 5000 steps
   auto_insert_metric_name: False
 
 model_summary:

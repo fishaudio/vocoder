@@ -248,16 +248,33 @@ class ISTFTHead(nn.Module):
         n_fft (int): Size of Fourier transform.
         hop_length (int): The distance between neighboring sliding window frames, which should align with
                           the resolution of the input features.
+        win_length (int): The size of window frame and STFT filter.
         padding (str, optional): Type of padding. Options are "center" or "same". Defaults to "same".
     """  # noqa: E501
 
-    def __init__(self, dim: int, n_fft: int, hop_length: int, padding: str = "same"):
+    def __init__(
+        self,
+        dim: int,
+        n_fft: int,
+        hop_length: int,
+        win_length: int,
+        padding: str = "same",
+    ):
         super().__init__()
+
+        self.n_fft = n_fft
+        self.hop_length = hop_length
+        self.win_length = win_length
+
+        self.istft = ISTFT(
+            n_fft=n_fft,
+            hop_length=hop_length,
+            win_length=win_length,
+            padding=padding,
+        )
+
         out_dim = n_fft * 2
         self.out = nn.Conv1d(dim, out_dim, 1)
-        self.istft = ISTFT(
-            n_fft=n_fft, hop_length=hop_length, win_length=n_fft, padding=padding
-        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -286,6 +303,21 @@ class ISTFTHead(nn.Module):
         S = mag * (x + 1j * y)
 
         return self.istft(S)
+
+        # x = torch.istft(
+        #     S,
+        #     n_fft=self.n_fft,
+        #     hop_length=self.hop_length,
+        #     win_length=self.win_length,
+        #     window=self.istft.window,
+        #     center=False,
+        #     normalized=False,
+        #     return_complex=False,
+        # )
+
+        # pad = (self.win_length - self.hop_length) // 2
+        # x = x[:, pad:-pad]
+        # return x
 
 
 class VocosGenerator(nn.Module):

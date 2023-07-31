@@ -11,4 +11,5 @@ head:
   dim: 1024
   n_fft: ${model.n_fft}
   hop_length: ${model.hop_length}
+  win_length: ${model.win_length}
   padding: same
