@@ -176,7 +176,13 @@ class VocosBackbone(nn.Module):
 
         self.channel_layers = nn.ModuleList()
         stem = nn.Sequential(
-            nn.Conv1d(input_channels, dims[0], kernel_size=7, padding=3),
+            nn.Conv1d(
+                input_channels,
+                dims[0],
+                kernel_size=7,
+                padding=3,
+                padding_mode="replicate",
+            ),
             LayerNorm(dims[0], eps=1e-6, data_format="channels_first"),
         )
         self.channel_layers.append(stem)
@@ -272,15 +278,14 @@ class ISTFTHead(nn.Module):
         mag = torch.clip(
             mag, max=1e2
         )  # safeguard to prevent excessively large magnitudes
+
         # wrapping happens here. These two lines produce real and imaginary value
         x = torch.cos(p)
         y = torch.sin(p)
-        phase = torch.atan2(y, x)
-        S = mag * torch.exp(phase * 1j)
 
-        audio = self.istft(S)
+        S = mag * (x + 1j * y)
 
-        return audio
+        return self.istft(S)
 
 
 class VocosGenerator(nn.Module):

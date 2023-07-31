@@ -1,0 +1,11 @@
+defaults:
+  - vocos
+  - _self_
+
+backbone:
+  depths: [3, 3, 27, 3]
+  dims: [192, 384, 768, 1536]
+  drop_path_rate: 0.4
+  kernel_sizes: [3, 5, 7]
+head:
+  dim: 1536

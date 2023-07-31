@@ -22,7 +22,7 @@ OmegaConf.register_new_resolver("eval", eval)
 from fish_vocoder.utils.logger import logger
 
 
-@hydra.main(config_path="fish_vocoder/configs", version_base="1.3", config_name="train")
+@hydra.main(config_path="configs", version_base="1.3", config_name="train")
 @torch.no_grad()
 def main(cfg: DictConfig):
     model: LightningModule = instantiate(cfg.model)
