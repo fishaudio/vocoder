@@ -331,4 +331,7 @@ class VocosGenerator(nn.Module):
         x = self.backbone(x)
         x = self.head(x)
 
-        return x[:, None, :]
+        if x.ndim == 2:
+            x = x[:, None, :]
+
+        return x
