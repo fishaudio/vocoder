@@ -1,3 +1,4 @@
+import torch
 import torchaudio
 from torch import Tensor, nn
 from torchaudio import functional as AF
@@ -11,7 +12,14 @@ class LoadAudio(nn.Module):
         self.to_mono = to_mono
 
     def forward(self, audio_path: str) -> Tensor:
-        audio, sr = torchaudio.load(audio_path)
+        try:
+            audio, sr = torchaudio.load(audio_path)
+        except Exception:
+            audio, sr = (
+                torch.zeros((self.sample_rate * 10,), dtype=torch.float32),
+                44100,
+            )
+
         audio = AF.resample(audio, orig_freq=sr, new_freq=self.sampling_rate)
 
         # If audio is not mono, convert it to mono
