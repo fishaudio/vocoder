@@ -23,6 +23,7 @@ class GANModel(VocoderModel):
         generator: nn.Module,
         discriminators: nn.ModuleDict,
         multi_resolution_stft_loss: MultiResolutionSTFTLoss,
+        num_frames: int,
         crop_length: int | None = None,
         feature_matching_loss: bool = False,
     ):
@@ -50,6 +51,7 @@ class GANModel(VocoderModel):
         self.feature_matching_loss = feature_matching_loss
 
         # Crop length for saving memory
+        self.num_frames = num_frames
         self.crop_length = crop_length
 
         # Disable automatic optimization

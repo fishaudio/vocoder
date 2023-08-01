@@ -12,6 +12,7 @@ win_length: 2048
 
 # While generator is running in large, we need to crop 32
 # frames for discriminator to save memory.
+num_frames: 128
 crop_length: "${eval: '${model.hop_length} * 32'}"
 
 optimizer:

@@ -264,6 +264,8 @@ class BigVGANGenerator(torch.nn.Module):
         upsample_initial_channel: int = 512,
         activation: Callable = SnakeBeta,
         use_template: bool = True,
+        pre_conv_kernel_size: int = 7,
+        post_conv_kernel_size: int = 7,
     ):
         super().__init__()
 
@@ -272,7 +274,13 @@ class BigVGANGenerator(torch.nn.Module):
         ), f"hop_length must be {prod(upsample_rates)}"
 
         self.conv_pre = weight_norm(
-            nn.Conv1d(num_mels, upsample_initial_channel, 7, 1, padding=3)
+            nn.Conv1d(
+                num_mels,
+                upsample_initial_channel,
+                pre_conv_kernel_size,
+                1,
+                padding=get_padding(pre_conv_kernel_size),
+            )
         )
 
         self.num_upsamples = len(upsample_rates)
@@ -326,7 +334,15 @@ class BigVGANGenerator(torch.nn.Module):
         self.activation_post = Activation1d(
             activation=activation(ch, alpha_logscale=True)
         )
-        self.conv_post = weight_norm(Conv1d(ch, 1, 7, 1, padding=3))
+        self.conv_post = weight_norm(
+            nn.Conv1d(
+                ch,
+                1,
+                post_conv_kernel_size,
+                1,
+                padding=get_padding(post_conv_kernel_size),
+            )
+        )
 
         # weight initialization
         self.ups.apply(init_weights)
