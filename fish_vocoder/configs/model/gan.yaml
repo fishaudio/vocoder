@@ -2,7 +2,7 @@ defaults:
   - generator: hifigan
   - _self_
 
-_target_: fish_vocoder.models.hifigan.GANModel
+_target_: fish_vocoder.models.gan.GANModel
 
 sampling_rate: 44100
 num_mels: 128

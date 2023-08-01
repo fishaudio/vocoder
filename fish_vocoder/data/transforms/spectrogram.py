@@ -23,6 +23,9 @@ class LinearSpectrogram(nn.Module):
         self.register_buffer("window", torch.hann_window(win_length))
 
     def forward(self, y: Tensor) -> Tensor:
+        if y.ndim == 3:
+            y = y.squeeze(1)
+
         pad = int((self.n_fft - self.hop_length) / 2)
 
         y = torch.nn.functional.pad(

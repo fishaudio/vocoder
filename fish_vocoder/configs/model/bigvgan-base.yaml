@@ -1,8 +1,0 @@
-defaults:
-  - hifigan
-  - _self_
-
-feature_matching_loss: true
-
-generator:
-  _target_: fish_vocoder.modules.generators.bigvgan.BigVGANGenerator

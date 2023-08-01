@@ -1,6 +1,6 @@
 _target_: fish_vocoder.modules.generators.vocos.VocosGenerator
 backbone:
-  _target_: fish_vocoder.modules.generators.vocos.VocosBackbone
+  _target_: fish_vocoder.modules.encoders.convnext.ConvNeXtEncoder
   input_channels: ${model.num_mels}
   depths: [3, 3, 9, 3]
   dims: [128, 256, 384, 512]

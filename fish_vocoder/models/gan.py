@@ -76,16 +76,8 @@ class GANModel(VocoderModel):
             },
         ]
 
-    def training_step(self, batch, batch_idx):
-        optim_g, optim_d = self.optimizers()
-
-        audio, lengths = batch["audio"], batch["lengths"]
-        audio_mask = sequence_mask(lengths)[:, None, :].to(audio.device, torch.float32)
-
-        # Generator
-        optim_g.zero_grad()
-        input_mels = self.mel_transforms.input(audio.squeeze(1))
-        fake_audio = self.generator(input_mels)
+    def training_generator(self, audio, audio_mask):
+        fake_audio, base_loss = self.forward(audio, audio_mask)
 
         assert fake_audio.shape == audio.shape
 
@@ -172,15 +164,23 @@ class GANModel(VocoderModel):
                 loss_adv_all += loss_fm
 
         loss_adv_all /= len(self.discriminators)
-        loss_gen_all = loss_stft * 2.5 + loss_adv_all
+        loss_gen_all = base_loss + loss_stft * 2.5 + loss_adv_all
 
-        self.manual_backward(loss_gen_all)
-        optim_g.step()
+        self.log(
+            "train/generator/all",
+            loss_gen_all,
+            on_step=True,
+            on_epoch=False,
+            prog_bar=True,
+            logger=True,
+            sync_dist=True,
+        )
 
-        # Discriminator
-        optim_d.zero_grad()
+        return loss_gen_all, fake_audio
 
+    def training_discriminator(self, audio, fake_audio):
         loss_disc_all = 0
+
         for key, disc in self.discriminators.items():
             score, _ = disc(audio)
             score_fake, _ = disc(fake_audio.detach())
@@ -201,9 +201,6 @@ class GANModel(VocoderModel):
 
         loss_disc_all /= len(self.discriminators)
 
-        self.manual_backward(loss_disc_all)
-        optim_d.step()
-
         self.log(
             "train/discriminator/all",
             loss_disc_all,
@@ -214,27 +211,53 @@ class GANModel(VocoderModel):
             sync_dist=True,
         )
 
+        return loss_disc_all
+
+    def training_step(self, batch, batch_idx):
+        optim_g, optim_d = self.optimizers()
+
+        audio, lengths = batch["audio"], batch["lengths"]
+        audio_mask = sequence_mask(lengths)[:, None, :].to(audio.device, torch.float32)
+
+        # Generator
+        optim_g.zero_grad()
+        loss_gen_all, fake_audio = self.training_generator(audio, audio_mask)
+        self.manual_backward(loss_gen_all)
+        optim_g.step()
+
+        # Discriminator
+        optim_d.zero_grad()
+        loss_disc_all = self.training_discriminator(audio, fake_audio)
+        self.manual_backward(loss_disc_all)
+        optim_d.step()
+
         # Manual LR Scheduler
         scheduler_g, scheduler_d = self.lr_schedulers()
         scheduler_g.step()
         scheduler_d.step()
 
-    def validation_step(self, batch: Any, batch_idx: int):
-        y, lengths = batch["audio"], batch["lengths"]
-        y_mask = sequence_mask(lengths)[:, None, :].to(y.device, torch.float32)
-        input_mels = self.mel_transforms.input(y.squeeze(1))
-        y_g_hat = self.generator(input_mels)
+    def forward(self, audio, mask=None):
+        input_mels = self.mel_transforms.input(audio.squeeze(1))
+        fake_audio = self.generator(input_mels)
 
-        assert y_g_hat.shape == y.shape
+        return fake_audio, 0
+
+    def validation_step(self, batch: Any, batch_idx: int):
+        audio, lengths = batch["audio"], batch["lengths"]
+        audio_mask = sequence_mask(lengths)[:, None, :].to(audio.device, torch.float32)
+
+        # Generator
+        fake_audio, _ = self.forward(audio, audio_mask)
+        assert fake_audio.shape == audio.shape
 
         # Apply mask
-        y = y * y_mask
-        y_g_hat = y_g_hat * y_mask
+        audio = audio * audio_mask
+        fake_audio = fake_audio * audio_mask
 
         # L1 Mel-Spectrogram Loss
-        y_mel = self.mel_transforms.loss(y.squeeze(1))
-        y_g_hat_mel = self.mel_transforms.loss(y_g_hat.squeeze(1))
-        loss_mel = F.l1_loss(y_mel, y_g_hat_mel)
+        audio_mel = self.mel_transforms.loss(audio.squeeze(1))
+        fake_audio_mel = self.mel_transforms.loss(fake_audio.squeeze(1))
+        loss_mel = F.l1_loss(audio_mel, fake_audio_mel)
 
         self.log(
             "val/metrics/mel",
@@ -247,7 +270,7 @@ class GANModel(VocoderModel):
         )
 
         # Report other metrics
-        self.report_val_metrics(y_g_hat, y, lengths)
+        self.report_val_metrics(fake_audio, audio, lengths)
 
     @staticmethod
     def feature_matching(disc_real_outputs, disc_generated_outputs):

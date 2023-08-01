@@ -1,0 +1,6 @@
+defaults:
+  - gan
+  - _self_
+
+_target_: fish_vocoder.models.vae.VAEModel
+latent_size: 256
