@@ -58,8 +58,12 @@ def main(source, generated):
         source_audio = source_audio[:min_len]
         generated_audio = generated_audio[:min_len]
 
-        scores["pesq_nb"].append(pesq_nb(source_audio, generated_audio, sr))
-        scores["pesq_wb"].append(pesq_wb(source_audio, generated_audio, sr))
+        try:
+            scores["pesq_nb"].append(pesq_nb(source_audio, generated_audio, sr))
+            scores["pesq_wb"].append(pesq_wb(source_audio, generated_audio, sr))
+        except Exception:
+            print(f"Error processing {source_file}")
+            continue
 
         if idx % 10 == 0:
             all_metrics = [f"{k}: {np.mean(v):.2f}" for k, v in scores.items()]
