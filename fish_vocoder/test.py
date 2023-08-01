@@ -36,48 +36,59 @@ def main(cfg: DictConfig):
 
     input_path = Path(cfg.input_path)
 
-    if input_path.suffix in [".wav", ".flac", ".mp3"]:
-        gt_y, sr = librosa.load(input_path, sr=cfg.model.sampling_rate, mono=False)
+    if input_path.is_file():
+        audios = [input_path]
+    elif input_path.is_dir():
+        audios = list(input_path.rglob("*"))
 
-        # If mono, add a channel dimension
-        if len(gt_y.shape) == 1:
-            gt_y = gt_y[None, :]
+    for audio_path in audios:
+        if audio_path.suffix in [".wav", ".flac", ".mp3"]:
+            gt_y, sr = librosa.load(audio_path, sr=cfg.model.sampling_rate, mono=False)
 
-        # If we have more than one channel, switch to batched mode
-        if cfg.pitch_shift != 0:
-            gt_y = librosa.effects.pitch_shift(gt_y, sr=sr, n_steps=cfg.pitch_shift)
+            # If mono, add a channel dimension
+            if len(gt_y.shape) == 1:
+                gt_y = gt_y[None, :]
 
-        gt_y = torch.from_numpy(gt_y)[:, None].to(model.device, torch.float32)
-        lengths = torch.IntTensor([gt_y.shape[-1]])
-        gt_y = F.pad(
-            gt_y, (0, cfg.model.hop_length - (cfg.model.hop_length % gt_y.shape[-1]))
+            # If we have more than one channel, switch to batched mode
+            if cfg.pitch_shift != 0:
+                gt_y = librosa.effects.pitch_shift(gt_y, sr=sr, n_steps=cfg.pitch_shift)
+
+            gt_y = torch.from_numpy(gt_y)[:, None].to(model.device, torch.float32)
+            lengths = torch.IntTensor([gt_y.shape[-1]])
+            gt_y = F.pad(
+                gt_y,
+                (0, cfg.model.hop_length - (cfg.model.hop_length % gt_y.shape[-1])),
+            )
+            logger.info(f"gt_y shape: {gt_y.shape}, lengths: {lengths}")
+            input_mels = model.mel_transforms.input(gt_y.squeeze(1))
+        elif audio_path.suffix in [".pt", ".pth"]:
+            input_mels = torch.load(audio_path, map_location=model.device).to(
+                torch.float32
+            )
+
+            if len(input_mels.shape) == 2:
+                input_mels = input_mels[None, ...]
+
+            if input_mels.shape[-1] == cfg.model.num_mels:
+                input_mels = input_mels.transpose(1, 2)
+        else:
+            logger.warning(f"Skipping {audio_path} as it is not a supported format")
+            continue
+
+        start = time.time()
+        fake_audio = model.generator(input_mels)
+        logger.info(f"Time taken: {time.time() - start:.2f}s")
+
+        output_path = (
+            Path(cfg.output_path or "generated")
+            / f"{cfg.task_name}/{ckpt['global_step']}"
+            / f"{Path(audio_path).relative_to(cfg.input_path).with_suffix('.wav')}"
         )
-        logger.info(f"gt_y shape: {gt_y.shape}, lengths: {lengths}")
-        input_mels = model.mel_transforms.input(gt_y.squeeze(1))
-    elif input_path.suffix in [".pt", ".pth"]:
-        input_mels = torch.load(input_path, map_location=model.device).to(torch.float32)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        if len(input_mels.shape) == 2:
-            input_mels = input_mels[None, ...]
-
-        if input_mels.shape[-1] == cfg.model.num_mels:
-            input_mels = input_mels.transpose(1, 2)
-    else:
-        raise ValueError(f"Unsupported input file type: {input_path.suffix}")
-
-    start = time.time()
-    fake_audio = model.generator(input_mels)
-    logger.info(f"Time taken: {time.time() - start:.2f}s")
-
-    generated_name = (
-        f"generated_{cfg.task_name}_{ckpt['global_step']}_"
-        + f"{Path(cfg.input_path).stem}.wav"
-    )
-    output_path = cfg.output_path or generated_name
-    fake_audio = fake_audio.squeeze(1)
-
-    sf.write(output_path, fake_audio.cpu().numpy().T, cfg.model.sampling_rate)
-    logger.info(f"Saved generated audio to {output_path}")
+        fake_audio = fake_audio.squeeze(1)
+        sf.write(output_path, fake_audio.cpu().numpy().T, cfg.model.sampling_rate)
+        logger.info(f"Saved generated audio to {output_path}")
 
 
 if __name__ == "__main__":
