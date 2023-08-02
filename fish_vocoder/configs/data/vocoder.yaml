@@ -1,7 +1,7 @@
 defaults:
   - dataset@datasets.train.datasets.hifi-8000h.dataset: vocoder-train
-  - dataset@datasets.train.datasets.high-quality-mix.dataset: vocoder-train
-  - dataset@datasets.train.datasets.libritts.dataset: vocoder-train
+  - dataset@datasets.train.datasets.vocoder-data-441.dataset: vocoder-train
+  - dataset@datasets.train.datasets.libritts-train.dataset: vocoder-train
   - _self_
 
 _target_: fish_vocoder.data.datamodules.naive.NaiveDataModule
@@ -20,15 +20,15 @@ datasets:
     datasets:
       hifi-8000h:
         dataset:
-          root: dataset/hifi-8000h
+          root: filelist.hifi-800h.train
         prob: 0.8
-      high-quality-mix:
+      vocoder-data-441:
         dataset:
-          root: dataset/vocoder_data_441
+          root: filelist.vocoder_data_441.train
         prob: 0.1
-      libritts:
+      libritts-train:
         dataset:
-          root: dataset/libritts-train
+          root: filelist.libritts.train
         prob: 0.1
 
   val:

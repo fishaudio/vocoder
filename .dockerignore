@@ -9,3 +9,4 @@ data
 build
 *.log
 other
+results
