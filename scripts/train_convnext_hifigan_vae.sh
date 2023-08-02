@@ -1,5 +1,4 @@
 python fish_vocoder/train.py task_name=convnext-hifigan-vae \
     model=vae \
     model/generator=convnext-hifigan-vae \
-    data.datasets.train.root=dataset/hifi-8000h \
-    data.datasets.train.root=filelist.train
+    data.datasets.train.datasets.hifi-8000h.dataset.root=filelist.train
