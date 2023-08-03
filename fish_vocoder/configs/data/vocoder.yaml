@@ -20,7 +20,7 @@ datasets:
     datasets:
       hifi-8000h:
         dataset:
-          root: filelist.hifi-800h.train
+          root: filelist.hifi-8000h.train
         prob: 0.8
       vocoder-data-441:
         dataset:

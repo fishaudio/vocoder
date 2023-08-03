@@ -178,7 +178,7 @@ class GANModel(VocoderModel):
             sync_dist=True,
         )
 
-        return loss_gen_all, fake_audio
+        return loss_gen_all, audio, fake_audio
 
     def training_discriminator(self, audio, fake_audio):
         loss_disc_all = 0
@@ -223,7 +223,7 @@ class GANModel(VocoderModel):
 
         # Generator
         optim_g.zero_grad()
-        loss_gen_all, fake_audio = self.training_generator(audio, audio_mask)
+        loss_gen_all, audio, fake_audio = self.training_generator(audio, audio_mask)
         self.manual_backward(loss_gen_all)
         optim_g.step()
 
