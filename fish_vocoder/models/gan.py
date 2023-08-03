@@ -228,6 +228,8 @@ class GANModel(VocoderModel):
         optim_g.step()
 
         # Discriminator
+        assert fake_audio.shape == audio.shape
+
         optim_d.zero_grad()
         loss_disc_all = self.training_discriminator(audio, fake_audio)
         self.manual_backward(loss_disc_all)
