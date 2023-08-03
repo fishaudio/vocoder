@@ -1,5 +1,6 @@
 import random
 
+from torch.distributed import get_rank
 from torch.utils.data import IterableDataset
 
 
@@ -13,6 +14,8 @@ class MixDatast(IterableDataset):
         self.probs = [p / total_probs for p in probs]
 
     def __iter__(self):
+        random.seed(42 + get_rank())
+
         while True:
             # Randomly select a dataset
             dataset = random.choices(self.datasets, weights=self.probs)[0]
