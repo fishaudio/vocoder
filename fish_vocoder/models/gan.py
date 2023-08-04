@@ -26,6 +26,7 @@ class GANModel(VocoderModel):
         num_frames: int,
         crop_length: int | None = None,
         feature_matching_loss: bool = False,
+        mel_loss: bool = False,
     ):
         super().__init__(
             sampling_rate=sampling_rate,
@@ -49,6 +50,7 @@ class GANModel(VocoderModel):
         # Loss
         self.multi_resolution_stft_loss = multi_resolution_stft_loss
         self.feature_matching_loss = feature_matching_loss
+        self.mel_loss = mel_loss
 
         # Crop length for saving memory
         self.num_frames = num_frames
@@ -91,11 +93,11 @@ class GANModel(VocoderModel):
         sc_loss, mag_loss = self.multi_resolution_stft_loss(
             fake_audio.squeeze(1), audio.squeeze(1)
         )
-        loss_stft = sc_loss + mag_loss
+        loss_spec = sc_loss + mag_loss
 
         self.log(
             "train/generator/stft",
-            loss_stft,
+            loss_spec,
             on_step=True,
             on_epoch=False,
             prog_bar=True,
@@ -105,20 +107,27 @@ class GANModel(VocoderModel):
 
         # L1 Mel-Spectrogram Loss
         # This is not used in backpropagation currently
-        with torch.no_grad():
+        if self.mel_loss is False:
+            with torch.no_grad():
+                audio_mel = self.mel_transforms.loss(audio.squeeze(1))
+                fake_audio_mel = self.mel_transforms.loss(fake_audio.squeeze(1))
+                loss_mel = F.l1_loss(audio_mel, fake_audio_mel)
+        else:
             audio_mel = self.mel_transforms.loss(audio.squeeze(1))
             fake_audio_mel = self.mel_transforms.loss(fake_audio.squeeze(1))
             loss_mel = F.l1_loss(audio_mel, fake_audio_mel)
 
-            self.log(
-                "train/generator/mel",
-                loss_mel,
-                on_step=True,
-                on_epoch=False,
-                prog_bar=True,
-                logger=True,
-                sync_dist=True,
-            )
+            loss_spec += loss_mel
+
+        self.log(
+            "train/generator/mel",
+            loss_mel,
+            on_step=True,
+            on_epoch=False,
+            prog_bar=True,
+            logger=True,
+            sync_dist=True,
+        )
 
         # Now, we need to reduce the length of the audio to save memory
         if self.crop_length is not None and audio.shape[2] > self.crop_length:
@@ -166,7 +175,7 @@ class GANModel(VocoderModel):
                 loss_adv_all += loss_fm
 
         loss_adv_all /= len(self.discriminators)
-        loss_gen_all = base_loss + loss_stft * 2.5 + loss_adv_all
+        loss_gen_all = base_loss + loss_spec * 2.5 + loss_adv_all
 
         self.log(
             "train/generator/all",

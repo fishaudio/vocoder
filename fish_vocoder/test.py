@@ -72,7 +72,6 @@ def main(cfg: DictConfig):
             if input_mels.shape[-1] == cfg.model.num_mels:
                 input_mels = input_mels.transpose(1, 2)
         else:
-            logger.warning(f"Skipping {audio_path} as it is not a supported format")
             continue
 
         start = time.time()

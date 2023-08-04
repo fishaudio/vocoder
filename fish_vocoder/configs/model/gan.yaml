@@ -75,3 +75,4 @@ multi_resolution_stft_loss:
   resolutions: ${model.discriminators.modules.mrd.resolutions}
 
 feature_matching_loss: false
+mel_loss: false
