@@ -293,4 +293,4 @@ class GANModel(VocoderModel):
             for rl, gl in zip(dr, dg):
                 losses.append(F.l1_loss(rl, gl))
 
-        return sum(losses)
+        return sum(losses) / len(disc_real_outputs)
