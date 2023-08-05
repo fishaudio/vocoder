@@ -6,6 +6,7 @@ from torch import nn
 
 from fish_vocoder.models.vocoder import VocoderModel
 from fish_vocoder.modules.losses.stft import MultiResolutionSTFTLoss
+from fish_vocoder.utils.grad_norm import grad_norm
 from fish_vocoder.utils.mask import sequence_mask
 
 
@@ -234,6 +235,17 @@ class GANModel(VocoderModel):
         optim_g.zero_grad()
         loss_gen_all, audio, fake_audio = self.training_generator(audio, audio_mask)
         self.manual_backward(loss_gen_all)
+
+        self.log(
+            "train/generator/grad_norm",
+            grad_norm(self.generator.parameters()),
+            on_step=True,
+            on_epoch=False,
+            prog_bar=False,
+            logger=True,
+            sync_dist=True,
+        )
+
         optim_g.step()
 
         # Discriminator
@@ -242,6 +254,18 @@ class GANModel(VocoderModel):
         optim_d.zero_grad()
         loss_disc_all = self.training_discriminator(audio, fake_audio)
         self.manual_backward(loss_disc_all)
+
+        for key, disc in self.discriminators.items():
+            self.log(
+                f"train/discriminator/grad_norm_{key}",
+                grad_norm(disc.parameters()),
+                on_step=True,
+                on_epoch=False,
+                prog_bar=False,
+                logger=True,
+                sync_dist=True,
+            )
+
         optim_d.step()
 
         # Manual LR Scheduler
