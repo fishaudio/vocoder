@@ -1,4 +1,6 @@
+from functools import partial
 from math import prod
+from typing import Callable
 
 import numpy as np
 import torch
@@ -124,6 +126,7 @@ class HiFiGANGenerator(nn.Module):
         use_template: bool = True,
         pre_conv_kernel_size: int = 7,
         post_conv_kernel_size: int = 7,
+        post_activation: Callable = partial(nn.SiLU, inplace=True),
     ):
         super().__init__()
 
@@ -185,6 +188,7 @@ class HiFiGANGenerator(nn.Module):
             for k, d in zip(resblock_kernel_sizes, resblock_dilation_sizes):
                 self.resblocks.append(ResBlock1(ch, k, d))
 
+        self.activation_post = post_activation()
         self.conv_post = weight_norm(
             nn.Conv1d(
                 ch,
@@ -217,7 +221,7 @@ class HiFiGANGenerator(nn.Module):
 
             x = xs / self.num_kernels
 
-        x = F.silu(x, inplace=True)
+        x = self.activation_post(x)
         x = self.conv_post(x)
         x = torch.tanh(x)
 

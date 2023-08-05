@@ -87,7 +87,10 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
 
         if cfg.get("resume_weights_only"):
             log.info("Resuming weights only!")
-            model.load_from_checkpoint(ckpt_path, strict=True)
+            ckpt = torch.load(ckpt_path, map_location=model.device)
+            model.load_state_dict(
+                ckpt["state_dict"] if "state_dict" in ckpt else ckpt, strict=False
+            )
             ckpt_path = None
 
         trainer.fit(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
