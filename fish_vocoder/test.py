@@ -25,11 +25,14 @@ from fish_vocoder.utils.logger import logger
 @hydra.main(config_path="configs", version_base="1.3", config_name="train")
 @torch.no_grad()
 def main(cfg: DictConfig):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    logger.info(f"Using device: {device}")
+
     model: LightningModule = instantiate(cfg.model)
-    ckpt = torch.load(cfg.ckpt_path)
+    ckpt = torch.load(cfg.ckpt_path, map_location=device)
     model.load_state_dict(ckpt["state_dict"])
     model.eval()
-    model.cuda()
+    model.to(device)
 
     if hasattr(model.generator, "remove_weight_norm"):
         model.generator.remove_weight_norm()
