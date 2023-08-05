@@ -160,7 +160,9 @@ class GANModel(VocoderModel):
             loss_adv_all += loss_fake
 
             if self.feature_matching_loss:
-                _, feat_real = disc(audio)
+                with torch.no_grad():
+                    _, feat_real = disc(audio)
+
                 loss_fm = self.feature_matching(feat_real, feat_fake)
 
                 self.log(
