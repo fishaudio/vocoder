@@ -101,6 +101,8 @@ class VocosGenerator(nn.Module):
         return x
 
     def remove_weight_norm(self):
-        for m in self.modules():
-            if hasattr(m, "remove_weight_norm"):
-                m.remove_weight_norm()
+        if hasattr(self.backbone, "remove_weight_norm"):
+            self.backbone.remove_weight_norm()
+
+        if hasattr(self.head, "remove_weight_norm"):
+            self.head.remove_weight_norm()
