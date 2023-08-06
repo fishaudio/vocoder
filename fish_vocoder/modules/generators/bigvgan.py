@@ -374,7 +374,6 @@ class BigVGANGenerator(torch.nn.Module):
         return x
 
     def remove_weight_norm(self):
-        print("Removing weight norm...")
         for up in self.ups:
             remove_weight_norm(up)
         for block in self.resblocks:

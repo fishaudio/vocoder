@@ -41,6 +41,7 @@ def main(cfg: DictConfig):
 
     if input_path.is_file():
         audios = [input_path]
+        input_path = input_path.parent
     elif input_path.is_dir():
         audios = list(input_path.rglob("*"))
 
@@ -84,7 +85,7 @@ def main(cfg: DictConfig):
         output_path = (
             Path(cfg.output_path or "generated")
             / f"{cfg.task_name}/{ckpt['global_step']}"
-            / f"{Path(audio_path).relative_to(cfg.input_path).with_suffix('.wav')}"
+            / f"{Path(audio_path).relative_to(input_path).with_suffix('.flac')}"
         )
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
