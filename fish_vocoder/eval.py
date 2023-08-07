@@ -38,18 +38,21 @@ def spec_difference(spec, target, preds):
 @click.argument(
     "generated", type=click.Path(exists=True, dir_okay=True, file_okay=False)
 )
-def main(source, generated):
+@click.option("--sr", default=24000)
+@click.option("--glob-pattern", default="*.wav")
+@click.option("--is-vocal/--is-instrumental", default=True)
+def main(source, generated, sr, glob_pattern, is_vocal):
     source = Path(source)
     generated = Path(generated)
 
     assert source.is_dir()
     assert generated.is_dir()
 
-    source_files = sorted(list(source.rglob("*.wav")))
+    source_files = sorted(list(source.rglob(glob_pattern)))
     scores = defaultdict(list)
     bar = tqdm(source_files)
 
-    mel_spec = LogMelSpectrogram(24000, 1024, 1024, 256, 128, center=False)
+    mel_spec = LogMelSpectrogram(sr, 1024, 1024, 256, 128, center=False)
 
     for idx, source_file in enumerate(tqdm(source_files)):
         generated_file = generated / source_file.relative_to(source)
@@ -61,8 +64,8 @@ def main(source, generated):
             print(f"{generated_file} does not exist")
             continue
 
-        source_audio, sr = librosa.load(source_file, sr=24000)
-        generated_audio, _ = librosa.load(generated_file, sr=24000)
+        source_audio, _ = librosa.load(source_file, sr=sr)
+        generated_audio, _ = librosa.load(generated_file, sr=sr)
 
         min_len = min(len(source_audio), len(generated_audio))
         assert max(len(source_audio) - min_len, len(generated_audio) - min_len) < 1000
@@ -74,8 +77,10 @@ def main(source, generated):
         generated_audio = torch.from_numpy(generated_audio)
 
         try:
-            scores["pesq_nb"].append(pesq_nb(source_audio, generated_audio, sr))
-            scores["pesq_wb"].append(pesq_wb(source_audio, generated_audio, sr))
+            if is_vocal:
+                scores["pesq_nb"].append(pesq_nb(source_audio, generated_audio, sr))
+                scores["pesq_wb"].append(pesq_wb(source_audio, generated_audio, sr))
+
             scores["spec_diff"].append(
                 spec_difference(mel_spec, source_audio, generated_audio)
             )
