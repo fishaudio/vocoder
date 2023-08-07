@@ -9,7 +9,7 @@ import torchaudio
 from torchmetrics.functional.audio.pesq import perceptual_evaluation_speech_quality
 from tqdm import tqdm
 
-from fish_vocoder.data.transforms.spectrogram import LogMelSpectrogram
+from fish_vocoder.data.transforms.spectrogram import LinearSpectrogram
 
 
 def pesq_nb(target, preds, sr):
@@ -30,6 +30,9 @@ def spec_difference(spec, target, preds):
     target = spec(target[None])
     preds = spec(preds[None])
 
+    target = torch.log(torch.clamp(target, min=1e-5))
+    preds = torch.log(torch.clamp(preds, min=1e-5))
+
     return torch.mean(torch.abs(target - preds)).item()
 
 
@@ -49,7 +52,7 @@ def main(source, generated):
     scores = defaultdict(list)
     bar = tqdm(source_files)
 
-    mel_spec = LogMelSpectrogram(24000, 1024, 1024, 256, 128, center=False)
+    mel_spec = LinearSpectrogram(2048, 2048, 512, center=False)
 
     for idx, source_file in enumerate(tqdm(source_files)):
         generated_file = generated / source_file.relative_to(source)
