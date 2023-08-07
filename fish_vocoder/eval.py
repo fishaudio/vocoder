@@ -49,7 +49,7 @@ def main(source, generated):
     scores = defaultdict(list)
     bar = tqdm(source_files)
 
-    mel_spec = LogMelSpectrogram(22050, 1024, 1024, 256, 128, center=False)
+    mel_spec = LogMelSpectrogram(24000, 1024, 1024, 256, 128, center=False)
 
     for idx, source_file in enumerate(tqdm(source_files)):
         generated_file = generated / source_file.relative_to(source)
@@ -61,8 +61,8 @@ def main(source, generated):
             print(f"{generated_file} does not exist")
             continue
 
-        source_audio, sr = librosa.load(source_file, sr=44100)
-        generated_audio, _ = librosa.load(generated_file, sr=44100)
+        source_audio, sr = librosa.load(source_file, sr=24000)
+        generated_audio, _ = librosa.load(generated_file, sr=24000)
 
         min_len = min(len(source_audio), len(generated_audio))
         assert max(len(source_audio) - min_len, len(generated_audio) - min_len) < 1000
