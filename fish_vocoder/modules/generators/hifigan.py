@@ -211,15 +211,11 @@ class HiFiGANGenerator(nn.Module):
             if self.use_template:
                 x = x + self.noise_convs[i](template)
 
-            xs = None
-
+            xs = []
             for j in range(self.num_kernels):
-                if xs is None:
-                    xs = self.resblocks[i * self.num_kernels + j](x)
-                else:
-                    xs += self.resblocks[i * self.num_kernels + j](x)
+                xs.append(self.resblocks[i * self.num_kernels + j](x))
 
-            x = xs / self.num_kernels
+            x = torch.stack(xs, dim=0).mean(dim=0)
 
         x = self.activation_post(x)
         x = self.conv_post(x)
