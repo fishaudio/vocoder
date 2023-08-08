@@ -26,8 +26,6 @@ class GANModel(VocoderModel):
         multi_resolution_stft_loss: MultiResolutionSTFTLoss,
         num_frames: int,
         crop_length: int | None = None,
-        feature_matching_loss: bool = False,
-        mel_loss: bool = False,
     ):
         super().__init__(
             sampling_rate=sampling_rate,
@@ -50,8 +48,6 @@ class GANModel(VocoderModel):
 
         # Loss
         self.multi_resolution_stft_loss = multi_resolution_stft_loss
-        self.feature_matching_loss = feature_matching_loss
-        self.mel_loss = mel_loss
 
         # Crop length for saving memory
         self.num_frames = num_frames
@@ -94,11 +90,11 @@ class GANModel(VocoderModel):
         sc_loss, mag_loss = self.multi_resolution_stft_loss(
             fake_audio.squeeze(1), audio.squeeze(1)
         )
-        loss_spec = sc_loss + mag_loss
+        loss_stft = sc_loss + mag_loss
 
         self.log(
             "train/generator/stft",
-            loss_spec,
+            loss_stft,
             on_step=True,
             on_epoch=False,
             prog_bar=True,
@@ -108,17 +104,9 @@ class GANModel(VocoderModel):
 
         # L1 Mel-Spectrogram Loss
         # This is not used in backpropagation currently
-        if self.mel_loss is False:
-            with torch.no_grad():
-                audio_mel = self.mel_transforms.loss(audio.squeeze(1))
-                fake_audio_mel = self.mel_transforms.loss(fake_audio.squeeze(1))
-                loss_mel = F.l1_loss(audio_mel, fake_audio_mel)
-        else:
-            audio_mel = self.mel_transforms.loss(audio.squeeze(1))
-            fake_audio_mel = self.mel_transforms.loss(fake_audio.squeeze(1))
-            loss_mel = F.l1_loss(audio_mel, fake_audio_mel)
-
-            loss_spec += loss_mel
+        audio_mel = self.mel_transforms.loss(audio.squeeze(1))
+        fake_audio_mel = self.mel_transforms.loss(fake_audio.squeeze(1))
+        loss_mel = F.l1_loss(audio_mel, fake_audio_mel)
 
         self.log(
             "train/generator/mel",
@@ -144,8 +132,19 @@ class GANModel(VocoderModel):
         loss_adv_all = 0
 
         for key, disc in self.discriminators.items():
-            score_fake, feat_fake = disc(fake_audio)
-            loss_fake = torch.mean((1 - score_fake) ** 2)
+            score_fakes, feat_fake = disc(fake_audio)
+            _, feat_real = disc(audio)
+
+            # Adversarial Loss
+            loss_fake = 0
+            for score_fake in score_fakes:
+                loss_fake += torch.mean((1 - score_fake) ** 2)
+
+            # Feature Matching Loss
+            loss_fm = 0
+            for dr, dg in zip(feat_real, feat_fake):
+                for rl, gl in zip(dr, dg):
+                    loss_fm += F.l1_loss(rl, gl)
 
             self.log(
                 f"train/generator/adv_{key}",
@@ -157,28 +156,20 @@ class GANModel(VocoderModel):
                 sync_dist=True,
             )
 
-            loss_adv_all += loss_fake
+            self.log(
+                f"train/generator/adv_fm_{key}",
+                loss_fm,
+                on_step=True,
+                on_epoch=False,
+                prog_bar=False,
+                logger=True,
+                sync_dist=True,
+            )
 
-            if self.feature_matching_loss:
-                with torch.no_grad():
-                    _, feat_real = disc(audio)
-
-                loss_fm = self.feature_matching(feat_real, feat_fake)
-
-                self.log(
-                    f"train/generator/adv_fm_{key}",
-                    loss_fm,
-                    on_step=True,
-                    on_epoch=False,
-                    prog_bar=False,
-                    logger=True,
-                    sync_dist=True,
-                )
-
-                loss_adv_all += loss_fm
+            loss_adv_all += loss_fake + loss_fm * 2
 
         loss_adv_all /= len(self.discriminators)
-        loss_gen_all = base_loss + loss_spec * 2.5 + loss_adv_all
+        loss_gen_all = base_loss + loss_stft * 2.5 + loss_mel * 45 + loss_adv_all
 
         self.log(
             "train/generator/all",
@@ -196,10 +187,15 @@ class GANModel(VocoderModel):
         loss_disc_all = 0
 
         for key, disc in self.discriminators.items():
-            score, _ = disc(audio)
-            score_fake, _ = disc(fake_audio.detach())
+            scores, _ = disc(audio)
+            score_fakes, _ = disc(fake_audio.detach())
 
-            loss_disc = torch.mean((score - 1) ** 2) + torch.mean((score_fake) ** 2)
+            loss_disc = 0
+
+            for score, score_fake in zip(scores, score_fakes):
+                loss_disc += torch.mean((score - 1) ** 2) + torch.mean(
+                    (score_fake) ** 2
+                )
 
             self.log(
                 f"train/discriminator/{key}",
@@ -310,13 +306,3 @@ class GANModel(VocoderModel):
 
         # Report other metrics
         self.report_val_metrics(fake_audio, audio, lengths)
-
-    @staticmethod
-    def feature_matching(disc_real_outputs, disc_generated_outputs):
-        losses = []
-
-        for dr, dg in zip(disc_real_outputs, disc_generated_outputs):
-            for rl, gl in zip(dr, dg):
-                losses.append(F.l1_loss(rl, gl))
-
-        return sum(losses) / len(disc_real_outputs)

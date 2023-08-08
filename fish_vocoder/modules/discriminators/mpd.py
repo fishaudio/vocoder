@@ -85,6 +85,4 @@ class MultiPeriodDiscriminator(nn.Module):
             scores.append(res)
             feature_map.append(fmap)
 
-        scores = torch.cat(scores, dim=1)
-
         return scores, feature_map

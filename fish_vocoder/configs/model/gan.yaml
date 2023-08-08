@@ -5,7 +5,7 @@ defaults:
 _target_: fish_vocoder.models.gan.GANModel
 
 sampling_rate: 44100
-num_mels: 128
+num_mels: 160
 n_fft: 2048
 hop_length: 512
 win_length: 2048
@@ -27,7 +27,7 @@ lr_scheduler:
   _partial_: true
   lr_lambda:
     _target_: fish_vocoder.schedulers.warmup_cosine.LambdaWarmUpCosineScheduler
-    val_base: 2e-4
+    val_base: 1e-4
     val_final: 0
     max_decay_steps: "${eval: ${trainer.max_steps} // 2}"
 
@@ -41,8 +41,8 @@ mel_transforms:
       win_length: ${model.win_length}
       sample_rate: ${model.sampling_rate}
       n_mels: ${model.num_mels}
-      f_min: 40
-      f_max: 16000
+      f_min: 0
+      f_max: "${eval: '${model.sampling_rate} // 2'}"
 
     loss:
       _target_: fish_vocoder.data.transforms.spectrogram.LogMelSpectrogram
@@ -73,6 +73,3 @@ discriminators:
 multi_resolution_stft_loss:
   _target_: fish_vocoder.modules.losses.stft.MultiResolutionSTFTLoss
   resolutions: ${model.discriminators.modules.mrd.resolutions}
-
-feature_matching_loss: false
-mel_loss: false

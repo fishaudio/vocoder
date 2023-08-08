@@ -3,7 +3,7 @@ import random
 
 import numpy as np
 import torch
-from torch.distributed import get_rank
+from torch.distributed import get_rank, is_initialized
 from torch.utils.data import IterableDataset
 
 
@@ -17,7 +17,9 @@ class MixDatast(IterableDataset):
         self.probs = [p / total_probs for p in probs]
 
     def __iter__(self):
-        seed = (42 + get_rank() * 114 + os.getpid() * 514) % 2**32
+        rank = get_rank() if is_initialized() else 0
+        seed = (42 + rank * 114 + os.getpid() * 514) % 2**32
+
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)

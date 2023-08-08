@@ -8,7 +8,7 @@ _target_: fish_vocoder.data.datamodules.naive.NaiveDataModule
 
 batch_size: 16
 val_batch_size: 2
-num_workers: 4
+num_workers: 8
 
 collate_fn:
   _target_: fish_vocoder.data.datasets.vocoder.collate_fn

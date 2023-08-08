@@ -5,11 +5,11 @@ transform:
     - _target_: fish_vocoder.data.transforms.load.LoadAudio
       sampling_rate: ${model.sampling_rate}
     - _target_: fish_vocoder.data.transforms.hq_pitch_shift.RandomHQPitchShift
-      probability: 1
+      probability: 0.5
       sampling_rate: ${model.sampling_rate}
       pitch_range: 12
     - _target_: fish_vocoder.data.transforms.loudness.RandomLoudness
-      probability: 0.9
+      probability: 0.5
       loudness_range: [0.1, 0.9]
     - _target_: fish_vocoder.data.transforms.crop.RandomCrop
       probability: 1
