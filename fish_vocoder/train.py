@@ -10,6 +10,7 @@ from omegaconf import DictConfig, OmegaConf
 
 # Allow TF32 on Ampere GPUs
 torch.set_float32_matmul_precision("high")
+torch.backends.cudnn.allow_tf32 = True
 
 # register eval resolver and root
 pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
