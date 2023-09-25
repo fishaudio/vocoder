@@ -31,7 +31,7 @@ class LinearSpectrogram(nn.Module):
         y = torch.nn.functional.pad(
             y.unsqueeze(1),
             (pad, pad),
-            mode="reflect",
+            mode="constant",
         ).squeeze(1)
 
         spec = torch.stft(
@@ -41,7 +41,7 @@ class LinearSpectrogram(nn.Module):
             win_length=self.win_length,
             window=self.window,
             center=self.center,
-            pad_mode="reflect",
+            pad_mode="constant",
             normalized=False,
             onesided=True,
             return_complex=True,

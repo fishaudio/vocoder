@@ -30,4 +30,4 @@ class Pad(nn.Module):
         else:
             pad = self.target_length - waveform.shape[-1]
 
-        return nn.functional.pad(waveform, (pad // 2, pad - (pad // 2)), "reflect")
+        return nn.functional.pad(waveform, (pad // 2, pad - (pad // 2)), "constant")

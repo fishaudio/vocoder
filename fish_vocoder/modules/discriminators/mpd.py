@@ -47,7 +47,7 @@ class DiscriminatorP(nn.Module):
         b, c, t = x.shape
         if t % self.period != 0:  # pad first
             n_pad = self.period - (t % self.period)
-            x = F.pad(x, (0, n_pad), "reflect")
+            x = F.pad(x, (0, n_pad), "constant")
             t = t + n_pad
         x = x.view(b, c, t // self.period, self.period)
 
