@@ -1,16 +1,11 @@
 defaults:
+  - resolution@_here_: "44100_512_2048"
   - generator: hifigan
   - spectrogram@mel_transforms.modules.input: mel
   - spectrogram@mel_transforms.modules.loss: mel
   - _self_
 
 _target_: fish_vocoder.models.gan.GANModel
-
-sampling_rate: 44100
-num_mels: 160
-n_fft: 2048
-hop_length: 512
-win_length: 2048
 
 # While generator is running in large, we need to crop 32
 # frames for discriminator to save memory.

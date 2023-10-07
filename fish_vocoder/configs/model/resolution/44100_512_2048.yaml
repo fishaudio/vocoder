@@ -1,0 +1,5 @@
+sampling_rate: 44100
+num_mels: 160
+n_fft: 2048
+hop_length: 512
+win_length: 2048

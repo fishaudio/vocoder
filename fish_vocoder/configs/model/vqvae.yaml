@@ -1,8 +1,11 @@
 defaults:
   - gan
+  - override resolution@_here_: "24000_2048_3072"
+  - override generator: vocos-small-vae
   - override spectrogram@mel_transforms.modules.input: linear
   - _self_
 
 _target_: fish_vocoder.models.vae.VQVAEModel
 codebook_size: 1024
 latent_size: 512
+num_frames: 64

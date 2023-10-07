@@ -1,5 +1,5 @@
 import torch
-from encodec.quantization.core_vq import ResidualVectorQuantization
+from encodec.quantization.core_vq import ResidualVectorQuantization, VectorQuantization
 
 from fish_vocoder.models.gan import GANModel
 
@@ -49,24 +49,43 @@ class VAEModel(GANModel):
 
 
 class VQVAEModel(GANModel):
-    def __init__(self, latent_size: int, codebook_size: int, *args, **kwargs):
+    def __init__(
+        self,
+        latent_size: int,
+        codebook_size: int,
+        num_quantizers: int = 1,
+        *args,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
 
         self.latent_size = latent_size
         self.codebook_size = codebook_size
-        self.vq = ResidualVectorQuantization(
-            dim=latent_size,
-            codebook_size=codebook_size,
-            kmeans_init=False,
-            num_quantizers=2,
-        )
+        self.num_quantizers = num_quantizers
+
+        if num_quantizers > 1:
+            self.vq = ResidualVectorQuantization(
+                dim=latent_size,
+                codebook_size=codebook_size,
+                num_quantizers=num_quantizers,
+                kmeans_init=False,
+            )
+        else:
+            self.vq = VectorQuantization(
+                dim=latent_size,
+                codebook_size=codebook_size,
+                kmeans_init=False,
+            )
 
     def forward(self, audio, mask):
         input_spec = self.mel_transforms.input(audio.squeeze(1))
 
         latent = self.generator.encoder(input_spec)
-        quantize, _, vq_losses = self.vq(latent)
-        vq_loss = vq_losses.mean()
+        quantize, _, vq_loss = self.vq(latent)
+
+        if self.num_quantizers > 1:
+            vq_loss = vq_loss.mean()
+
         fake_audio = self.generator.decoder(quantize)
 
         stage = "train" if self.training else "val"

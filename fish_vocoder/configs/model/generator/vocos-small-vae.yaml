@@ -12,13 +12,13 @@ modules:
     backbone:
       _target_: fish_vocoder.modules.encoders.convnext.ConvNeXtEncoder
       input_channels: 512
-      depths: [6]
-      dims: [512]
+      depths: [6, 3]
+      dims: [512, 1024]
       drop_path_rate: 0.1
       kernel_sizes: [7]
     head:
       _target_: fish_vocoder.modules.generators.vocos.ISTFTHead
-      dim: 512
+      dim: "${eval: '${..backbone.dims} [-1]'}"
       n_fft: ${model.n_fft}
       hop_length: ${model.hop_length}
       win_length: ${model.win_length}
