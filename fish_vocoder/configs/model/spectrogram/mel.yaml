@@ -1,0 +1,8 @@
+_target_: fish_vocoder.data.transforms.spectrogram.LogMelSpectrogram
+n_fft: ${model.n_fft}
+hop_length: ${model.hop_length}
+win_length: ${model.win_length}
+sample_rate: ${model.sampling_rate}
+n_mels: ${model.num_mels}
+f_min: 0
+f_max: "${eval: '${model.sampling_rate} // 2'}"

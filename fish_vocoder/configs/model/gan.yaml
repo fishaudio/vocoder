@@ -1,5 +1,7 @@
 defaults:
   - generator: hifigan
+  - spectrogram@mel_transforms.modules.input: mel
+  - spectrogram@mel_transforms.modules.loss: mel
   - _self_
 
 _target_: fish_vocoder.models.gan.GANModel
@@ -34,23 +36,8 @@ lr_scheduler:
 mel_transforms:
   _target_: torch.nn.ModuleDict
   modules:
-    input:
-      _target_: fish_vocoder.data.transforms.spectrogram.LogMelSpectrogram
-      n_fft: ${model.n_fft}
-      hop_length: ${model.hop_length}
-      win_length: ${model.win_length}
-      sample_rate: ${model.sampling_rate}
-      n_mels: ${model.num_mels}
-      f_min: 0
-      f_max: "${eval: '${model.sampling_rate} // 2'}"
-
-    loss:
-      _target_: fish_vocoder.data.transforms.spectrogram.LogMelSpectrogram
-      n_fft: ${model.n_fft}
-      hop_length: ${model.hop_length}
-      win_length: ${model.win_length}
-      sample_rate: ${model.sampling_rate}
-      n_mels: ${model.num_mels}
+    input: {}
+    loss: {}
 
 generator: {}
 

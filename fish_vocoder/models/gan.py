@@ -66,16 +66,24 @@ class GANModel(VocoderModel):
         lr_scheduler_generator = self.lr_scheduler_builder(optimizer_generator)
         lr_scheduler_discriminator = self.lr_scheduler_builder(optimizer_discriminator)
 
-        return [optimizer_generator, optimizer_discriminator], [
+        return (
             {
-                "scheduler": lr_scheduler_generator,
-                "interval": "step",
+                "optimizer": optimizer_generator,
+                "lr_scheduler": {
+                    "scheduler": lr_scheduler_generator,
+                    "interval": "step",
+                    "name": "optimizer/generator",
+                },
             },
             {
-                "scheduler": lr_scheduler_discriminator,
-                "interval": "step",
+                "optimizer": optimizer_discriminator,
+                "lr_scheduler": {
+                    "scheduler": lr_scheduler_discriminator,
+                    "interval": "step",
+                    "name": "optimizer/discriminator",
+                },
             },
-        ]
+        )
 
     def training_generator(self, audio, audio_mask):
         fake_audio, base_loss = self.forward(audio, audio_mask)

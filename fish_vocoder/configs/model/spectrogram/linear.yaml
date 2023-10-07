@@ -1,0 +1,4 @@
+_target_: fish_vocoder.data.transforms.spectrogram.LinearSpectrogram
+n_fft: ${model.n_fft}
+hop_length: ${model.hop_length}
+win_length: ${model.win_length}

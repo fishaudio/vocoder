@@ -1,0 +1,25 @@
+_target_: torch.nn.ModuleDict
+modules:
+  encoder:
+    _target_: fish_vocoder.modules.encoders.convnext.ConvNeXtEncoder
+    input_channels: "${eval: '${model.n_fft} // 2 + 1'}"
+    depths: [6]
+    dims: [512]
+    drop_path_rate: 0.1
+    kernel_sizes: [7]
+  decoder:
+    _target_: fish_vocoder.modules.generators.vocos.VocosGenerator
+    backbone:
+      _target_: fish_vocoder.modules.encoders.convnext.ConvNeXtEncoder
+      input_channels: 512
+      depths: [6]
+      dims: [512]
+      drop_path_rate: 0.1
+      kernel_sizes: [7]
+    head:
+      _target_: fish_vocoder.modules.generators.vocos.ISTFTHead
+      dim: 512
+      n_fft: ${model.n_fft}
+      hop_length: ${model.hop_length}
+      win_length: ${model.win_length}
+      padding: same

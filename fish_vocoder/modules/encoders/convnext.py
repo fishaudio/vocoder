@@ -163,11 +163,11 @@ class ParallelConvNeXtBlock(nn.Module):
 class ConvNeXtEncoder(nn.Module):
     def __init__(
         self,
-        input_channels=3,
-        depths=[3, 3, 9, 3],
-        dims=[96, 192, 384, 768],
-        drop_path_rate=0.0,
-        layer_scale_init_value=1e-6,
+        input_channels: int = 3,
+        depths: list[int] = [3, 3, 9, 3],
+        dims: list[int] = [96, 192, 384, 768],
+        drop_path_rate: float = 0.0,
+        layer_scale_init_value: float = 1e-6,
         kernel_sizes: tuple[int] = (7,),
     ):
         super().__init__()

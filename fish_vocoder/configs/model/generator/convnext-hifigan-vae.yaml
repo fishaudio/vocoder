@@ -1,18 +1,12 @@
 _target_: torch.nn.ModuleDict
 modules:
   encoder:
-    _target_: torch.nn.Sequential
-    _args_:
-      - _target_: fish_vocoder.data.transforms.spectrogram.LinearSpectrogram
-        n_fft: ${model.n_fft}
-        hop_length: ${model.hop_length}
-        win_length: ${model.win_length}
-      - _target_: fish_vocoder.modules.encoders.convnext.ConvNeXtEncoder
-        input_channels: "${eval: '${model.n_fft} // 2 + 1'}"
-        depths: [9, 3]
-        dims: [384, "${eval: '${model.latent_size} * 2'}"]
-        drop_path_rate: 0.2
-        kernel_sizes: [7]
+    _target_: fish_vocoder.modules.encoders.convnext.ConvNeXtEncoder
+    input_channels: "${eval: '${model.n_fft} // 2 + 1'}"
+    depths: [9, 3]
+    dims: [384, "${eval: '${model.latent_size} * 2'}"]
+    drop_path_rate: 0.2
+    kernel_sizes: [7]
   decoder:
     _target_: fish_vocoder.modules.generators.vocos.VocosGenerator
     backbone:

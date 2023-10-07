@@ -3,5 +3,6 @@ defaults:
   - override spectrogram@mel_transforms.modules.input: linear
   - _self_
 
-_target_: fish_vocoder.models.vae.VAEModel
-latent_size: 256
+_target_: fish_vocoder.models.vae.VQVAEModel
+codebook_size: 1024
+latent_size: 512
