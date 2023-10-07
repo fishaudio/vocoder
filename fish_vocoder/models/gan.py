@@ -166,7 +166,7 @@ class GANModel(VocoderModel):
                 sync_dist=True,
             )
 
-            loss_adv_all += loss_fake + loss_fm * 2
+            loss_adv_all += loss_fake + loss_fm
 
         loss_adv_all /= len(self.discriminators)
         loss_gen_all = base_loss + loss_stft * 2.5 + loss_mel * 45 + loss_adv_all
