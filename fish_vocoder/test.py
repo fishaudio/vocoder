@@ -64,7 +64,8 @@ def main(cfg: DictConfig):
                 (0, cfg.model.hop_length - (cfg.model.hop_length % gt_y.shape[-1])),
             )
             logger.info(f"gt_y shape: {gt_y.shape}, lengths: {lengths}")
-            input_mels = model.mel_transforms.input(gt_y.squeeze(1))
+            inputs = model.mel_transforms.input(gt_y.squeeze(1))
+
         elif audio_path.suffix in [".pt", ".pth"]:
             input_mels = torch.load(audio_path, map_location=model.device).to(
                 torch.float32
@@ -75,17 +76,19 @@ def main(cfg: DictConfig):
 
             if input_mels.shape[-1] == cfg.model.num_mels:
                 input_mels = input_mels.transpose(1, 2)
+
+            inputs = input_mels
         else:
             continue
 
         start = time.time()
-        fake_audio = model.generator(input_mels)
+        fake_audio = model(None, None, input_spec=inputs)[0]
         logger.info(f"Time taken: {time.time() - start:.2f}s")
 
         output_path = (
             Path(cfg.output_path or "generated")
             / f"{cfg.task_name}/{ckpt['global_step']}"
-            / f"{Path(audio_path).relative_to(input_path).with_suffix('.flac')}"
+            / f"{Path(audio_path).relative_to(input_path).with_suffix('.wav')}"
         )
         output_path.parent.mkdir(parents=True, exist_ok=True)
 

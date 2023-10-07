@@ -6,6 +6,20 @@ defaults:
   - _self_
 
 _target_: fish_vocoder.models.vae.VQVAEModel
-codebook_size: 1024
+codebook_size: 4096
 latent_size: 512
 num_frames: 64
+crop_length: "${eval: '${model.hop_length} * 8'}"
+
+# Reduce discriminator periods to save memory.
+discriminators:
+  modules:
+    mpd:
+      periods: [2, 3, 5, 7, 11]
+
+    mrd:
+      resolutions:
+        - ["${model.n_fft}", "${model.hop_length}", "${model.win_length}"]
+        - [1024, 120, 600]
+        - [2048, 240, 1200]
+        - [4096, 480, 2400]

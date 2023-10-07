@@ -161,3 +161,4 @@ other
 filelist.*
 run.sh
 /generated_*
+/generated

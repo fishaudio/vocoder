@@ -77,8 +77,9 @@ class VQVAEModel(GANModel):
                 kmeans_init=False,
             )
 
-    def forward(self, audio, mask):
-        input_spec = self.mel_transforms.input(audio.squeeze(1))
+    def forward(self, audio, mask, input_spec=None):
+        if input_spec is None:
+            input_spec = self.mel_transforms.input(audio.squeeze(1))
 
         latent = self.generator.encoder(input_spec)
         quantize, _, vq_loss = self.vq(latent)
