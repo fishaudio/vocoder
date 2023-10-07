@@ -68,21 +68,6 @@ class ISTFTHead(nn.Module):
 
         return self.istft(S)
 
-        # x = torch.istft(
-        #     S,
-        #     n_fft=self.n_fft,
-        #     hop_length=self.hop_length,
-        #     win_length=self.win_length,
-        #     window=self.istft.window,
-        #     center=False,
-        #     normalized=False,
-        #     return_complex=False,
-        # )
-
-        # pad = (self.win_length - self.hop_length) // 2
-        # x = x[:, pad:-pad]
-        # return x
-
 
 class VocosGenerator(nn.Module):
     def __init__(self, backbone: nn.Module, head: nn.Module):
