@@ -38,6 +38,7 @@ class VocoderModel(L.LightningModule):
         )
 
     @torch.no_grad()
+    @torch.cuda.amp.custom_fwd(cast_inputs=torch.float32)
     def pesq(self, y_hat, y, sr=16000):
         y_hat = resample(y_hat, self.sampling_rate, sr)
         y = resample(y, self.sampling_rate, sr)
