@@ -23,3 +23,19 @@ class RandomLoudness(nn.Module):
         waveform = waveform * (new_loudness / (max_loudness + 1e-5))
 
         return waveform
+
+
+class LoudnessNorm(nn.Module):
+    def __init__(self, probability: float = 1.0) -> None:
+        super().__init__()
+
+        self.probability = probability
+
+    def forward(self, waveform: Tensor) -> Tensor:
+        if torch.rand(1) > self.probability:
+            return waveform
+
+        max_loudness = torch.max(torch.abs(waveform))
+        waveform = waveform / (max_loudness + 1e-5)
+
+        return waveform
