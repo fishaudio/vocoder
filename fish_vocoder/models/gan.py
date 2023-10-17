@@ -279,9 +279,11 @@ class GANModel(VocoderModel):
         scheduler_g.step()
         scheduler_d.step()
 
-    def forward(self, audio, mask=None):
-        input_mels = self.mel_transforms.input(audio.squeeze(1))
-        fake_audio = self.generator(input_mels)
+    def forward(self, audio, mask=None, input_spec=None):
+        if input_spec is None:
+            input_spec = self.mel_transforms.input(audio.squeeze(1))
+
+        fake_audio = self.generator(input_spec)
 
         return fake_audio, 0
 

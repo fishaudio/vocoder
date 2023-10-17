@@ -1,0 +1,5 @@
+sampling_rate: 24000
+num_mels: 100
+n_fft: 1024
+hop_length: 256
+win_length: 1024

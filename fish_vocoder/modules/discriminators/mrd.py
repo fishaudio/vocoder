@@ -53,10 +53,10 @@ class DiscriminatorR(torch.nn.Module):
         x = F.pad(
             x,
             (
-                int((self.n_fft - self.hop_length) / 2),
-                int((self.n_fft - self.hop_length) / 2),
+                (self.n_fft - self.hop_length) // 2,
+                (self.n_fft - self.hop_length + 1) // 2,
             ),
-            mode="constant",
+            mode="relect",
         )
         x = x.squeeze(1)
         x = torch.stft(

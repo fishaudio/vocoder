@@ -2,15 +2,15 @@ defaults:
   - gan
   - override resolution@_here_: "24000_2048_3072"
   - override generator: vocos-small-vae
-  - override spectrogram@mel_transforms.modules.input: linear
+  - override spectrogram@mel_transforms.modules.input: null
   - _self_
 
 _target_: fish_vocoder.models.vae.VQVAEModel
 codebook_size: 4096
 num_quantizers: 1
 latent_size: 512
-num_frames: 64
-crop_length: "${eval: '${model.hop_length} * 8'}"
+num_frames: 32
+# crop_length: "${eval: '${model.hop_length} * 8'}"
 
 # Reduce discriminator periods to save memory.
 discriminators:

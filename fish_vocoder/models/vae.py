@@ -78,16 +78,22 @@ class VQVAEModel(GANModel):
             )
 
     def forward(self, audio, mask, input_spec=None):
-        if input_spec is None:
-            input_spec = self.mel_transforms.input(audio.squeeze(1))
-
-        latent = self.generator.encoder(input_spec)
+        latent = self.generator.encoder(audio, mask)
         quantize, _, vq_loss = self.vq(latent)
 
         if self.num_quantizers > 1:
             vq_loss = vq_loss.mean()
 
         fake_audio = self.generator.decoder(quantize)
+
+        assert abs(fake_audio.size(2) - audio.size(2)) <= self.hop_length
+
+        if fake_audio.size(2) > audio.size(2):
+            fake_audio = fake_audio[:, :, : audio.size(2)]
+        else:
+            fake_audio = torch.nn.functional.pad(
+                fake_audio, (0, audio.size(2) - fake_audio.size(2))
+            )
 
         stage = "train" if self.training else "val"
         self.log(
@@ -100,4 +106,4 @@ class VQVAEModel(GANModel):
             sync_dist=True,
         )
 
-        return fake_audio, vq_loss * 5
+        return fake_audio, 0  # vq_loss * 5

@@ -26,12 +26,13 @@ class LinearSpectrogram(nn.Module):
         if y.ndim == 3:
             y = y.squeeze(1)
 
-        pad = int((self.n_fft - self.hop_length) / 2)
-
         y = torch.nn.functional.pad(
             y.unsqueeze(1),
-            (pad, pad),
-            mode="constant",
+            (
+                (self.win_length - self.hop_length) // 2,
+                (self.win_length - self.hop_length + 1) // 2,
+            ),
+            mode="reflect",
         ).squeeze(1)
 
         spec = torch.stft(
@@ -41,7 +42,7 @@ class LinearSpectrogram(nn.Module):
             win_length=self.win_length,
             window=self.window,
             center=self.center,
-            pad_mode="constant",
+            pad_mode="reflect",
             normalized=False,
             onesided=True,
             return_complex=True,
