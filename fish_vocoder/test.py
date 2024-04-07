@@ -30,7 +30,11 @@ def main(cfg: DictConfig):
 
     model: LightningModule = instantiate(cfg.model)
     ckpt = torch.load(cfg.ckpt_path, map_location=device)
-    model.load_state_dict(ckpt["state_dict"])
+
+    if "state_dict" in ckpt:
+        ckpt = ckpt["state_dict"]
+
+    model.load_state_dict(ckpt)
     model.eval()
     model.to(device)
 
@@ -86,8 +90,7 @@ def main(cfg: DictConfig):
         logger.info(f"Time taken: {time.time() - start:.2f}s")
 
         output_path = (
-            Path(cfg.output_path or "generated")
-            / f"{cfg.task_name}/{ckpt['global_step']}"
+            Path(cfg.output_path)
             / f"{Path(audio_path).relative_to(input_path).with_suffix('.wav')}"
         )
         output_path.parent.mkdir(parents=True, exist_ok=True)

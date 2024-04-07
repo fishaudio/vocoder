@@ -7,7 +7,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import Conv1d
-from torch.nn.utils import remove_weight_norm, weight_norm
+from torch.nn.utils.parametrizations import weight_norm
+from torch.nn.utils.parametrize import remove_parametrizations
+from torch.utils.checkpoint import checkpoint
 
 
 def init_weights(m, mean=0.0, std=0.01):
@@ -105,11 +107,30 @@ class ResBlock1(torch.nn.Module):
             x = xt + x
         return x
 
-    def remove_weight_norm(self):
+    def remove_parametrizations(self):
         for conv in self.convs1:
-            remove_weight_norm(conv)
+            remove_parametrizations(conv)
         for conv in self.convs2:
-            remove_weight_norm(conv)
+            remove_parametrizations(conv)
+
+
+class ParralelBlock(nn.Module):
+    def __init__(
+        self,
+        channels: int,
+        kernel_sizes: tuple[int] = (3, 7, 11),
+        dilation_sizes: tuple[tuple[int]] = ((1, 3, 5), (1, 3, 5), (1, 3, 5)),
+    ):
+        super().__init__()
+
+        assert len(kernel_sizes) == len(dilation_sizes)
+
+        self.blocks = nn.ModuleList()
+        for k, d in zip(kernel_sizes, dilation_sizes):
+            self.blocks.append(ResBlock1(channels, k, d))
+
+    def forward(self, x):
+        return torch.stack([block(x) for block in self.blocks], dim=0).mean(dim=0)
 
 
 class HiFiGANGenerator(nn.Module):
@@ -185,8 +206,9 @@ class HiFiGANGenerator(nn.Module):
         self.resblocks = nn.ModuleList()
         for i in range(len(self.ups)):
             ch = upsample_initial_channel // (2 ** (i + 1))
-            for k, d in zip(resblock_kernel_sizes, resblock_dilation_sizes):
-                self.resblocks.append(ResBlock1(ch, k, d))
+            self.resblocks.append(
+                ParralelBlock(ch, resblock_kernel_sizes, resblock_dilation_sizes)
+            )
 
         self.activation_post = post_activation()
         self.conv_post = weight_norm(
@@ -211,11 +233,15 @@ class HiFiGANGenerator(nn.Module):
             if self.use_template:
                 x = x + self.noise_convs[i](template)
 
-            xs = []
-            for j in range(self.num_kernels):
-                xs.append(self.resblocks[i * self.num_kernels + j](x))
+            if self.training and self.checkpointing:
+                x = checkpoint(
+                    self.resblocks[i],
+                    x,
+                    use_reentrant=False,
+                )
+            else:
+                x = self.resblocks[i](x)
 
-            x = torch.stack(xs, dim=0).mean(dim=0)
 
         x = self.activation_post(x)
         x = self.conv_post(x)
@@ -223,10 +249,10 @@ class HiFiGANGenerator(nn.Module):
 
         return x
 
-    def remove_weight_norm(self):
+    def remove_parametrizations(self):
         for up in self.ups:
-            remove_weight_norm(up)
+            remove_parametrizations(up)
         for block in self.resblocks:
-            block.remove_weight_norm()
-        remove_weight_norm(self.conv_pre)
-        remove_weight_norm(self.conv_post)
+            block.remove_parametrizations()
+        remove_parametrizations(self.conv_pre)
+        remove_parametrizations(self.conv_post)

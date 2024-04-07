@@ -1,5 +1,5 @@
 import torch
-from torch import Tensor, nn
+from torch import nn
 from vocos.spectral_ops import ISTFT
 
 
@@ -67,27 +67,3 @@ class ISTFTHead(nn.Module):
         S = mag * (x + 1j * y)
 
         return self.istft(S)
-
-
-class VocosGenerator(nn.Module):
-    def __init__(self, backbone: nn.Module, head: nn.Module):
-        super().__init__()
-
-        self.backbone = backbone
-        self.head = head
-
-    def forward(self, x: Tensor) -> Tensor:
-        x = self.backbone(x)
-        x = self.head(x)
-
-        if x.ndim == 2:
-            x = x[:, None, :]
-
-        return x
-
-    def remove_weight_norm(self):
-        if hasattr(self.backbone, "remove_weight_norm"):
-            self.backbone.remove_weight_norm()
-
-        if hasattr(self.head, "remove_weight_norm"):
-            self.head.remove_weight_norm()

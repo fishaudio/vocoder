@@ -9,7 +9,8 @@ import torch
 from alias_free_torch import Activation1d
 from torch import nn, pow, sin
 from torch.nn import Conv1d, Parameter
-from torch.nn.utils import remove_weight_norm, weight_norm
+from torch.nn.utils.parametrizations import weight_norm
+from torch.nn.utils.parametrize import remove_parametrizations
 
 from .hifigan import get_padding, init_weights
 
@@ -243,12 +244,12 @@ class AMPBlock(torch.nn.Module):
 
         return x
 
-    def remove_weight_norm(self):
+    def remove_parametrizations(self):
         for conv in self.convs1:
-            remove_weight_norm(conv)
+            remove_parametrizations(conv)
 
         for conv in self.convs2:
-            remove_weight_norm(conv)
+            remove_parametrizations(conv)
 
 
 class BigVGANGenerator(torch.nn.Module):
@@ -369,10 +370,10 @@ class BigVGANGenerator(torch.nn.Module):
 
         return x
 
-    def remove_weight_norm(self):
+    def remove_parametrizations(self):
         for up in self.ups:
-            remove_weight_norm(up)
+            remove_parametrizations(up)
         for block in self.resblocks:
-            block.remove_weight_norm()
-        remove_weight_norm(self.conv_pre)
-        remove_weight_norm(self.conv_post)
+            block.remove_parametrizations()
+        remove_parametrizations(self.conv_pre)
+        remove_parametrizations(self.conv_post)

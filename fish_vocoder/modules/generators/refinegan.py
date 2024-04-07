@@ -4,7 +4,8 @@ import numpy as np
 import torch
 from torch import nn
 from torch.nn import functional as F
-from torch.nn.utils import remove_weight_norm, weight_norm
+from torch.nn.utils.parametrizations import weight_norm
+from torch.nn.utils.parametrize import remove_parametrizations
 
 
 def named_apply(
@@ -97,10 +98,10 @@ class ResBlock(torch.nn.Module):
 
         return x
 
-    def remove_weight_norm(self):
+    def remove_parametrizations(self):
         for c1, c2 in zip(self.convs1, self.convs2):
-            remove_weight_norm(c1)
-            remove_weight_norm(c2)
+            remove_parametrizations(c1)
+            remove_parametrizations(c2)
 
     def init_weights(self, m):
         if type(m) == nn.Conv1d:
@@ -173,9 +174,9 @@ class ParallelResBlock(nn.Module):
 
         return torch.mean(torch.stack(results), dim=0)
 
-    def remove_weight_norm(self):
+    def remove_parametrizations(self):
         for block in self.blocks:
-            block[1].remove_weight_norm()
+            block[1].remove_parametrizations()
 
 
 class RefineGANGenerator(nn.Module):
@@ -272,16 +273,16 @@ class RefineGANGenerator(nn.Module):
             )
         )
 
-    def remove_weight_norm(self) -> None:
-        remove_weight_norm(self.template_conv)
-        remove_weight_norm(self.mel_conv)
-        remove_weight_norm(self.output_conv)
+    def remove_parametrizations(self) -> None:
+        remove_parametrizations(self.template_conv)
+        remove_parametrizations(self.mel_conv)
+        remove_parametrizations(self.output_conv)
 
         for block in self.downsample_blocks:
-            block[1].remove_weight_norm()
+            block[1].remove_parametrizations()
 
         for block in self.upsample_conv_blocks:
-            block.remove_weight_norm()
+            block.remove_parametrizations()
 
     def forward(self, mel: torch.Tensor, template: torch.Tensor) -> torch.Tensor:
         """

@@ -1,11 +1,11 @@
-_target_: fish_vocoder.modules.generators.vocos.VocosGenerator
+_target_: fish_vocoder.modules.generators.unify.UnifyGenerator
 backbone:
   _target_: fish_vocoder.modules.encoders.convnext.ConvNeXtEncoder
   input_channels: ${model.num_mels}
   depths: [3, 3, 27, 3]
   dims: [128, 256, 512, 1024]
   drop_path_rate: 0.4
-  kernel_sizes: [7]
+  kernel_size: 7
 head:
   _target_: fish_vocoder.modules.generators.vocos.ISTFTHead
   dim: 1024

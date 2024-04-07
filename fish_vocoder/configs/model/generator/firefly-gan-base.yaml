@@ -1,0 +1,20 @@
+_target_: fish_vocoder.modules.generators.unify.UnifyGenerator
+backbone:
+  _target_: fish_vocoder.modules.encoders.convnext.ConvNeXtEncoder
+  input_channels: ${model.num_mels}
+  depths: [3, 3, 9, 3]
+  dims: [128, 256, 384, 512]
+  drop_path_rate: 0.2
+  kernel_size: 7
+head:
+  _target_: fish_vocoder.modules.generators.hifigan.HiFiGANGenerator
+  hop_length: ${model.hop_length}
+  upsample_rates: [8, 8, 2, 2, 2]
+  upsample_kernel_sizes: [16, 16, 4, 4, 4]
+  resblock_kernel_sizes: [3, 7, 11]
+  resblock_dilation_sizes: [[1, 3, 5], [1, 3, 5], [1, 3, 5]]
+  num_mels: 512  # consistent with the output of the backbone
+  upsample_initial_channel: 512
+  use_template: false
+  pre_conv_kernel_size: 13
+  post_conv_kernel_size: 13
