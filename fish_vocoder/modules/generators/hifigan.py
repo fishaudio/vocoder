@@ -242,7 +242,6 @@ class HiFiGANGenerator(nn.Module):
             else:
                 x = self.resblocks[i](x)
 
-
         x = self.activation_post(x)
         x = self.conv_post(x)
         x = torch.tanh(x)

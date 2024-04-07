@@ -4,9 +4,9 @@ from torch import nn
 
 class UnifyGenerator(nn.Module):
     def __init__(
-        self, 
-        backbone: nn.Module, 
-        head: nn.Module, 
+        self,
+        backbone: nn.Module,
+        head: nn.Module,
         vq: nn.Module | None = None,
     ):
         super().__init__()

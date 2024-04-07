@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
+
 # DropPath copied from timm library
 def drop_path(
     x, drop_prob: float = 0.0, training: bool = False, scale_by_keep: bool = True
@@ -176,9 +177,7 @@ class ConvNeXtEncoder(nn.Module):
             self.downsample_layers.append(mid_layer)
 
         self.stages = nn.ModuleList()
-        dp_rates = [
-            x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))
-        ]
+        dp_rates = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]
 
         cur = 0
         for i in range(len(depths)):
