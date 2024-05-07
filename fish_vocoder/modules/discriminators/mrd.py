@@ -56,7 +56,7 @@ class DiscriminatorR(torch.nn.Module):
                 (self.n_fft - self.hop_length) // 2,
                 (self.n_fft - self.hop_length + 1) // 2,
             ),
-            mode="relect",
+            mode="reflect",
         )
         x = x.squeeze(1)
         x = torch.stft(
