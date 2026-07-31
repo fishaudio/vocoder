@@ -15,7 +15,11 @@ def random_copy(src: Path, dst: Path, num: int, seed: int):
 
     src, dst = Path(src), Path(dst)
 
-    files = [f for f in src.rglob("*") if f.is_file() and f.suffix in [".wav", ".flac"]]
+    files = [
+        f
+        for f in src.rglob("*")
+        if f.is_file() and f.suffix.lower() in [".wav", ".flac"]
+    ]
     logger.info(f"Found {len(files)} files in {src}")
 
     generator = random.Random(seed)
