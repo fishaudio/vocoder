@@ -50,7 +50,8 @@ def main(cfg: DictConfig):
         audios = list(input_path.rglob("*"))
 
     for audio_path in audios:
-        if audio_path.suffix in [".wav", ".flac", ".mp3"]:
+        suffix = audio_path.suffix.lower()
+        if suffix in [".wav", ".flac", ".mp3"]:
             gt_y, sr = librosa.load(audio_path, sr=cfg.model.sampling_rate, mono=False)
 
             # If mono, add a channel dimension
@@ -70,7 +71,7 @@ def main(cfg: DictConfig):
             logger.info(f"gt_y shape: {gt_y.shape}, lengths: {lengths}")
             inputs = model.mel_transforms.input(gt_y.squeeze(1))
 
-        elif audio_path.suffix in [".pt", ".pth"]:
+        elif suffix in [".pt", ".pth"]:
             input_mels = torch.load(audio_path, map_location=model.device).to(
                 torch.float32
             )
